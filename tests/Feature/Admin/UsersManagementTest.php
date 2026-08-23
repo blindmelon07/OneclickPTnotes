@@ -51,3 +51,49 @@ test('non-admins cannot assign roles even if they call the component directly', 
         ->call('editRoles', $target->id)
         ->assertForbidden();
 });
+
+test('admins can create a user with roles', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.users')
+        ->call('createUser')
+        ->set('name', 'Jane Staff')
+        ->set('email', 'jane@example.com')
+        ->set('password', 'password')
+        ->set('password_confirmation', 'password')
+        ->set('newUserRoles', ['staff'])
+        ->call('saveUser')
+        ->assertHasNoErrors();
+
+    $created = User::where('email', 'jane@example.com')->first();
+
+    expect($created)->not->toBeNull()
+        ->and($created->name)->toBe('Jane Staff')
+        ->and($created->hasRole('staff'))->toBeTrue()
+        ->and($created->email_verified_at)->not->toBeNull();
+});
+
+test('new user requires a unique email and confirmed password', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $existing = User::factory()->create();
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.users')
+        ->call('createUser')
+        ->set('name', 'Jane Staff')
+        ->set('email', $existing->email)
+        ->set('password', 'password')
+        ->set('password_confirmation', 'different')
+        ->call('saveUser')
+        ->assertHasErrors(['email', 'password']);
+});
+
+test('non-admins cannot create users even if they call the component directly', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::admin.users')
+        ->call('createUser')
+        ->assertForbidden();
+});
