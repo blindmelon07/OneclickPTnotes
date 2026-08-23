@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__laravel-boost__search-docs",
+      "Bash(vendor/bin/pint --dirty --format agent)",
+      "Bash(vendor/bin/pint --format agent app/Models/User.php bootstrap/app.php app/Providers/AppServiceProvider.php database/seeders/DatabaseSeeder.php database/seeders/RolesAndPermissionsSeeder.php routes/admin.php routes/web.php tests/Feature/Admin/UsersManagementTest.php tests/Feature/Admin/RolesManagementTest.php tests/Feature/Admin/PermissionsManagementTest.php resources/views/pages/admin)",
+      "mcp__laravel-boost__record-rule",
+      "Bash(vendor/bin/pint --format agent resources/views/components/app-logo.blade.php resources/views/components/app-logo-icon.blade.php)"
+    ]
+  }
+}
