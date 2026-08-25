@@ -188,8 +188,8 @@ new #[Title('Patient')] class extends Component {
         @endcan
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-1 space-y-6">
+    <div class="grid min-w-0 gap-6 lg:grid-cols-3">
+        <div class="min-w-0 lg:col-span-1 space-y-6">
             <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
                 <flux:heading size="sm" class="mb-3">{{ __('Demographics') }}</flux:heading>
                 <dl class="space-y-2 text-sm">
@@ -224,9 +224,9 @@ new #[Title('Patient')] class extends Component {
             </div>
         </div>
 
-        <div class="lg:col-span-2 space-y-6">
+        <div class="min-w-0 lg:col-span-2 space-y-6">
             <div>
-                <div class="mb-3 flex items-center justify-between">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <flux:heading size="sm">{{ __('Notes') }}</flux:heading>
                     <div class="flex flex-wrap gap-2">
                         @foreach (\App\Models\Note::types() as $type)
@@ -273,7 +273,7 @@ new #[Title('Patient')] class extends Component {
             </div>
 
             <div>
-                <div class="mb-3 flex items-center justify-between">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <flux:heading size="sm">{{ __('Upcoming visits') }}</flux:heading>
                     <flux:modal.trigger name="schedule-visit">
                         <flux:button size="sm" icon="calendar">{{ __('Schedule visit') }}</flux:button>
