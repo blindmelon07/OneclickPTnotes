@@ -173,6 +173,39 @@ test('the patient colors legend is paginated', function () {
     expect($page2->pluck('name')->all())->toBe(['Foster', 'Grant']);
 });
 
+test('viewing a day opens the mobile day-visits modal with that day\'s visits', function () {
+    $user = User::factory()->create();
+    $patient = Patient::factory()->create(['name' => 'Mobile Test Patient']);
+
+    Visit::factory()->create([
+        'patient_id' => $patient->id,
+        'therapist_id' => $user->id,
+        'scheduled_at' => '2026-08-19 10:00:00',
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('pages::calendar')
+        ->set('month', '2026-08')
+        ->call('viewDay', '2026-08-19');
+
+    expect($component->get('selectedDay'))->toBe('2026-08-19');
+
+    $visits = $component->get('selectedDayVisits');
+    expect($visits)->toHaveCount(1);
+    expect($visits->first()->patient->is($patient))->toBeTrue();
+});
+
+test('the mobile day-visits modal is empty for a day with no visits', function () {
+    $user = User::factory()->create();
+
+    $component = Livewire::actingAs($user)
+        ->test('pages::calendar')
+        ->set('month', '2026-08')
+        ->call('viewDay', '2026-08-20');
+
+    expect($component->get('selectedDayVisits'))->toHaveCount(0);
+});
+
 test('navigating months resets the patient colors legend to page one', function () {
     $user = User::factory()->create();
 

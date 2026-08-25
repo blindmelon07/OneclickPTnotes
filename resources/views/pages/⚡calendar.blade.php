@@ -4,6 +4,7 @@ use App\Models\Patient;
 use App\Models\PatientColor;
 use App\Models\Visit;
 use Carbon\Carbon;
+use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -34,6 +35,12 @@ new #[Title('Calendar')] class extends Component {
 
     public string $month = '';
 
+    /**
+     * The day (Y-m-d) shown in the mobile "day visits" modal, opened by tapping
+     * a day's dots on narrow screens where there's no room for chip text.
+     */
+    public ?string $selectedDay = null;
+
     public function mount(): void
     {
         $this->month = now()->format('Y-m');
@@ -55,6 +62,18 @@ new #[Title('Calendar')] class extends Component {
     {
         $this->month = now()->format('Y-m');
         $this->resetPage();
+    }
+
+    /**
+     * Open the mobile "day visits" modal for the given day (Y-m-d). On phone-width
+     * screens a day cell only has room for colored dots, not chip text, so tapping
+     * one lists that day's visits in full.
+     */
+    public function viewDay(string $date): void
+    {
+        $this->selectedDay = $date;
+
+        Flux::modal('day-visits')->show();
     }
 
     /**
@@ -151,6 +170,34 @@ new #[Title('Calendar')] class extends Component {
         }
 
         return $weeks;
+    }
+
+    /**
+     * The visits for the day selected in the mobile "day visits" modal, drawn from
+     * the already-loaded month grid rather than a fresh query.
+     *
+     * @return Collection<int, Visit>
+     */
+    #[Computed]
+    public function selectedDayVisits(): Collection
+    {
+        if ($this->selectedDay === null) {
+            return collect();
+        }
+
+        return $this->visits
+            ->filter(fn (Visit $visit) => $visit->scheduled_at->format('Y-m-d') === $this->selectedDay)
+            ->values();
+    }
+
+    /**
+     * A human-readable label for the day selected in the mobile modal.
+     */
+    public function selectedDayLabel(): string
+    {
+        return $this->selectedDay === null
+            ? ''
+            : Carbon::createFromFormat('Y-m-d', $this->selectedDay)->format('F j, Y');
     }
 
     /**
@@ -277,15 +324,17 @@ new #[Title('Calendar')] class extends Component {
             @endforeach
         </div>
 
-        <flux:separator vertical class="mx-1 h-6" />
+        <flux:separator vertical class="hidden h-6 sm:block" />
 
-        <flux:tooltip :content="__('Previous month')">
-            <flux:button size="sm" icon="chevron-left" wire:click="previousMonth" />
-        </flux:tooltip>
-        <flux:button size="sm" wire:click="goToToday">{{ __('Today') }}</flux:button>
-        <flux:tooltip :content="__('Next month')">
-            <flux:button size="sm" icon="chevron-right" wire:click="nextMonth" />
-        </flux:tooltip>
+        <div class="flex items-center gap-2">
+            <flux:tooltip :content="__('Previous month')">
+                <flux:button size="sm" icon="chevron-left" wire:click="previousMonth" />
+            </flux:tooltip>
+            <flux:button size="sm" wire:click="goToToday">{{ __('Today') }}</flux:button>
+            <flux:tooltip :content="__('Next month')">
+                <flux:button size="sm" icon="chevron-right" wire:click="nextMonth" />
+            </flux:tooltip>
+        </div>
     </div>
 
     <div class="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-700">
@@ -297,14 +346,15 @@ new #[Title('Calendar')] class extends Component {
 
         @foreach ($this->weeks as $week)
             @foreach ($week as $day)
-                <div class="min-h-28 bg-white p-1.5 dark:bg-zinc-800 {{ $day['inMonth'] ? '' : 'opacity-40' }}">
+                <div class="min-h-16 bg-white p-1.5 sm:min-h-28 dark:bg-zinc-800 {{ $day['inMonth'] ? '' : 'opacity-40' }}">
                     <div class="mb-1 flex justify-end">
                         <span class="flex size-6 items-center justify-center rounded-full text-xs {{ $day['isToday'] ? $this->todayClasses().' font-semibold' : 'text-zinc-500 dark:text-zinc-400' }}">
                             {{ $day['date']->format('j') }}
                         </span>
                     </div>
 
-                    <div class="space-y-1">
+                    {{-- Tablet and up: full visit chips (time, patient, type). --}}
+                    <div class="hidden space-y-1 sm:block">
                         @foreach ($day['visits'] as $visit)
                             <flux:link
                                 :href="route('patients.show', $visit->patient)"
@@ -316,6 +366,23 @@ new #[Title('Calendar')] class extends Component {
                             </flux:link>
                         @endforeach
                     </div>
+
+                    {{-- Phone widths: no room for chip text, so show dots and open a list on tap. --}}
+                    @if ($day['visits']->isNotEmpty())
+                        <button
+                            type="button"
+                            wire:click="viewDay('{{ $day['date']->format('Y-m-d') }}')"
+                            class="flex flex-wrap items-center justify-end gap-0.5 sm:hidden"
+                            aria-label="{{ trans_choice(':count visit on :date|:count visits on :date', $day['visits']->count(), ['count' => $day['visits']->count(), 'date' => $day['date']->format('F j')]) }}"
+                        >
+                            @foreach ($day['visits']->take(4) as $visit)
+                                <span class="size-2 rounded-full {{ $this->swatchClasses($this->colorForPatient($visit->patient_id)) }}"></span>
+                            @endforeach
+                            @if ($day['visits']->count() > 4)
+                                <span class="text-[10px] text-zinc-500 dark:text-zinc-400">+{{ $day['visits']->count() - 4 }}</span>
+                            @endif
+                        </button>
+                    @endif
                 </div>
             @endforeach
         @endforeach
@@ -354,4 +421,27 @@ new #[Title('Calendar')] class extends Component {
             <flux:pagination :paginator="$this->patients" />
         </div>
     @endif
+
+    {{-- Mobile-only: full visit details for the day tapped in the grid above. --}}
+    <flux:modal name="day-visits" class="md:w-96">
+        <div class="space-y-4">
+            <flux:heading size="lg">{{ $this->selectedDayLabel() }}</flux:heading>
+
+            <div class="space-y-2">
+                @forelse ($this->selectedDayVisits as $visit)
+                    <flux:link
+                        :href="route('patients.show', $visit->patient)"
+                        wire:navigate
+                        class="block rounded-lg px-3 py-2 no-underline {{ $this->chipClasses($this->colorForPatient($visit->patient_id)) }}"
+                    >
+                        <span class="font-medium">{{ $visit->scheduled_at->format('g:i A') }}</span>
+                        {{ $visit->patient->name }}
+                        <span class="font-medium">({{ strtoupper($visit->visit_type) }})</span>
+                    </flux:link>
+                @empty
+                    <flux:text>{{ __('No visits.') }}</flux:text>
+                @endforelse
+            </div>
+        </div>
+    </flux:modal>
 </section>
