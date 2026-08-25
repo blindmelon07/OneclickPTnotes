@@ -89,15 +89,31 @@ new #[Title('Note')] class extends Component
         @endforeach
 
         <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
-            <flux:heading size="sm">{{ __('Signature') }}</flux:heading>
+            <flux:heading size="sm">{{ __('Staff Signature') }}</flux:heading>
             @if ($note->signature_path)
                 <img
                     src="{{ route('notes.signature', $note) }}"
-                    alt="{{ __('Signature') }}"
+                    alt="{{ __('Staff signature') }}"
                     class="mt-2 h-20 rounded-md border border-zinc-200 bg-white p-2 dark:border-zinc-700"
                 >
                 <flux:text class="mt-1">
                     {{ __('Signed by :name on :date', ['name' => $note->author?->name, 'date' => optional($note->signed_at)->format('M j, Y g:i A')]) }}
+                </flux:text>
+            @else
+                <flux:text class="mt-1">{{ __('Not signed.') }}</flux:text>
+            @endif
+        </div>
+
+        <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+            <flux:heading size="sm">{{ __('Patient Signature') }}</flux:heading>
+            @if ($note->patient_signature_path)
+                <img
+                    src="{{ route('notes.patient-signature', $note) }}"
+                    alt="{{ __('Patient signature') }}"
+                    class="mt-2 h-20 rounded-md border border-zinc-200 bg-white p-2 dark:border-zinc-700"
+                >
+                <flux:text class="mt-1">
+                    {{ __('Signed by :name on :date', ['name' => $note->patient->name, 'date' => optional($note->patient_signed_at)->format('M j, Y g:i A')]) }}
                 </flux:text>
             @else
                 <flux:text class="mt-1">{{ __('Not signed.') }}</flux:text>

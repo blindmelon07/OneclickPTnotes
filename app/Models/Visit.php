@@ -53,6 +53,14 @@ class Visit extends Model
         return $this->hasOne(Note::class);
     }
 
+    /**
+     * @return HasOne<InvoiceItem, $this>
+     */
+    public function invoiceItem(): HasOne
+    {
+        return $this->hasOne(InvoiceItem::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

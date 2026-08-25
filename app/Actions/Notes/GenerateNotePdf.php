@@ -15,17 +15,10 @@ class GenerateNotePdf
     {
         $note->loadMissing(['patient.doctor', 'patient.insuranceCompany', 'patient.homeHealthAgency', 'visit', 'author']);
 
-        $signatureDataUri = null;
-
-        if ($note->signature_path && Storage::disk('local')->exists($note->signature_path)) {
-            $signatureDataUri = 'data:image/png;base64,'.base64_encode(
-                Storage::disk('local')->get($note->signature_path)
-            );
-        }
-
         $pdf = Pdf::loadView('pdf.notes.note', [
             'note' => $note,
-            'signatureDataUri' => $signatureDataUri,
+            'signatureDataUri' => $this->signatureDataUri($note->signature_path),
+            'patientSignatureDataUri' => $this->signatureDataUri($note->patient_signature_path),
         ]);
 
         $path = sprintf('notes/%d/%s-%s.pdf', $note->patient_id, $note->type, $note->id);
@@ -33,5 +26,17 @@ class GenerateNotePdf
         Storage::disk('local')->put($path, $pdf->output());
 
         return $path;
+    }
+
+    /**
+     * Read a stored signature PNG and inline it as a base64 data URI.
+     */
+    protected function signatureDataUri(?string $path): ?string
+    {
+        if (! $path || ! Storage::disk('local')->exists($path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode(Storage::disk('local')->get($path));
     }
 }

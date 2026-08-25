@@ -4,6 +4,7 @@ use App\Models\Doctor;
 use App\Models\HomeHealthAgency;
 use App\Models\InsuranceCompany;
 use App\Models\Patient;
+use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -30,6 +31,8 @@ new #[Title('Patients')] class extends Component {
 
     public ?int $home_health_agency_id = null;
 
+    public ?int $pt_assistant_id = null;
+
     public string $status = Patient::STATUS_ACTIVE;
 
     public function updatingSearch(): void
@@ -53,12 +56,13 @@ new #[Title('Patients')] class extends Component {
             'doctor_id' => ['nullable', 'exists:doctors,id'],
             'insurance_company_id' => ['nullable', 'exists:insurance_companies,id'],
             'home_health_agency_id' => ['nullable', 'exists:home_health_agencies,id'],
+            'pt_assistant_id' => ['nullable', 'exists:users,id'],
             'status' => ['required', 'in:'.implode(',', Patient::statuses())],
         ]);
 
         $patient = Patient::create($validated);
 
-        $this->reset(['name', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id', 'home_health_agency_id']);
+        $this->reset(['name', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id', 'home_health_agency_id', 'pt_assistant_id']);
         $this->status = Patient::STATUS_ACTIVE;
 
         Flux::modal('create-patient')->close();
@@ -93,11 +97,20 @@ new #[Title('Patients')] class extends Component {
         return HomeHealthAgency::orderBy('name')->get();
     }
 
+    /**
+     * @return Collection<int, User>
+     */
+    #[Computed]
+    public function ptAssistants(): Collection
+    {
+        return User::role('PT Assistant')->orderBy('name')->get();
+    }
+
     #[Computed]
     public function patients()
     {
         return Patient::query()
-            ->with('homeHealthAgency')
+            ->with(['homeHealthAgency', 'ptAssistant'])
             ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter, fn ($query) => $query->where('status', $this->statusFilter))
             ->orderBy('name')
@@ -136,6 +149,7 @@ new #[Title('Patients')] class extends Component {
             <flux:table.column>{{ __('Name') }}</flux:table.column>
             <flux:table.column>{{ __('Diagnosis') }}</flux:table.column>
             <flux:table.column>{{ __('HHA') }}</flux:table.column>
+            <flux:table.column>{{ __('PT Assistant') }}</flux:table.column>
             <flux:table.column>{{ __('Status') }}</flux:table.column>
         </flux:table.columns>
 
@@ -147,6 +161,7 @@ new #[Title('Patients')] class extends Component {
                     </flux:table.cell>
                     <flux:table.cell>{{ $patient->diagnosis }}</flux:table.cell>
                     <flux:table.cell>{{ $patient->homeHealthAgency?->name }}</flux:table.cell>
+                    <flux:table.cell>{{ $patient->ptAssistant?->name ?: '—' }}</flux:table.cell>
                     <flux:table.cell>
                         <flux:badge :color="$patient->statusColor()" size="sm">{{ ucfirst($patient->status) }}</flux:badge>
                     </flux:table.cell>
@@ -178,6 +193,12 @@ new #[Title('Patients')] class extends Component {
             <flux:select wire:model="home_health_agency_id" :label="__('HHA')" :placeholder="__('Select HHA')">
                 @foreach ($this->homeHealthAgencies as $hha)
                     <flux:select.option :value="$hha->id">{{ $hha->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model="pt_assistant_id" :label="__('PT Assistant')" :placeholder="__('Select PT Assistant')">
+                @foreach ($this->ptAssistants as $ptAssistant)
+                    <flux:select.option :value="$ptAssistant->id">{{ $ptAssistant->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 

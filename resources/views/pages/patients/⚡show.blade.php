@@ -5,6 +5,7 @@ use App\Models\HomeHealthAgency;
 use App\Models\InsuranceCompany;
 use App\Models\Note;
 use App\Models\Patient;
+use App\Models\User;
 use App\Models\Visit;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -28,6 +29,8 @@ new #[Title('Patient')] class extends Component {
     public ?int $insurance_company_id = null;
 
     public ?int $home_health_agency_id = null;
+
+    public ?int $pt_assistant_id = null;
 
     public ?int $approved_visits = null;
 
@@ -56,7 +59,7 @@ new #[Title('Patient')] class extends Component {
         $this->patient = $patient;
         $this->fill($patient->only([
             'name', 'address', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id',
-            'home_health_agency_id', 'approved_visits', 'cert_period', 'pt_freq', 'pta_visits', 'status',
+            'home_health_agency_id', 'pt_assistant_id', 'approved_visits', 'cert_period', 'pt_freq', 'pta_visits', 'status',
         ]));
 
         $this->date_referred = $patient->date_referred?->toDateString();
@@ -77,6 +80,7 @@ new #[Title('Patient')] class extends Component {
             'doctor_id' => ['nullable', 'exists:doctors,id'],
             'insurance_company_id' => ['nullable', 'exists:insurance_companies,id'],
             'home_health_agency_id' => ['nullable', 'exists:home_health_agencies,id'],
+            'pt_assistant_id' => ['nullable', 'exists:users,id'],
             'approved_visits' => ['nullable', 'integer', 'min:0'],
             'cert_period' => ['nullable', 'string', 'max:255'],
             'date_referred' => ['nullable', 'date'],
@@ -143,6 +147,15 @@ new #[Title('Patient')] class extends Component {
     }
 
     /**
+     * @return Collection<int, User>
+     */
+    #[Computed]
+    public function ptAssistants(): Collection
+    {
+        return User::role('PT Assistant')->orderBy('name')->get();
+    }
+
+    /**
      * @return Collection<int, Note>
      */
     #[Computed]
@@ -192,6 +205,7 @@ new #[Title('Patient')] class extends Component {
                     <div><dt class="text-zinc-500">{{ __('Doctor') }}</dt><dd>{{ $patient->doctor?->name ?: '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('Insurance') }}</dt><dd>{{ $patient->insuranceCompany?->name ?: '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('HHA') }}</dt><dd>{{ $patient->homeHealthAgency?->name ?: '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('PT Assistant') }}</dt><dd>{{ $patient->ptAssistant?->name ?: '—' }}</dd></div>
                 </dl>
             </div>
 
@@ -331,6 +345,12 @@ new #[Title('Patient')] class extends Component {
             <flux:select wire:model="home_health_agency_id" :label="__('HHA')" :placeholder="__('Select HHA')">
                 @foreach ($this->homeHealthAgencies as $hha)
                     <flux:select.option :value="$hha->id">{{ $hha->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model="pt_assistant_id" :label="__('PT Assistant')" :placeholder="__('Select PT Assistant')">
+                @foreach ($this->ptAssistants as $ptAssistant)
+                    <flux:select.option :value="$ptAssistant->id">{{ $ptAssistant->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 

@@ -34,6 +34,7 @@ class Note extends Model
         return [
             'data' => 'array',
             'signed_at' => 'datetime',
+            'patient_signed_at' => 'datetime',
             'emailed_at' => 'datetime',
         ];
     }
@@ -65,6 +66,11 @@ class Note extends Model
     public function isSigned(): bool
     {
         return $this->signed_at !== null;
+    }
+
+    public function isPatientSigned(): bool
+    {
+        return $this->patient_signed_at !== null;
     }
 
     public function isEmailed(): bool
@@ -115,7 +121,7 @@ class Note extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['patient_id', 'visit_id', 'author_id', 'type', 'data', 'signed_at', 'pdf_path', 'emailed_to', 'emailed_at'])
+            ->logOnly(['patient_id', 'visit_id', 'author_id', 'type', 'data', 'signed_at', 'patient_signed_at', 'pdf_path', 'emailed_to', 'emailed_at'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName('note');

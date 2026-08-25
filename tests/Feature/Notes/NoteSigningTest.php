@@ -24,6 +24,7 @@ test('staff can fill out, sign, and email a note to the office', function () {
         ->set('fields.assessment', 'Patient tolerated treatment well.')
         ->set('fields.plan', 'Continue POC 2x/week.')
         ->set('signature', FAKE_SIGNATURE)
+        ->set('patientSignature', FAKE_SIGNATURE)
         ->call('signAndSend')
         ->assertHasNoErrors();
 
@@ -32,11 +33,14 @@ test('staff can fill out, sign, and email a note to the office', function () {
     expect($note->patient_id)->toBe($patient->id);
     expect($note->author_id)->toBe($user->id);
     expect($note->isSigned())->toBeTrue();
+    expect($note->isPatientSigned())->toBeTrue();
     expect($note->isEmailed())->toBeTrue();
     expect($note->signature_path)->not->toBeNull();
+    expect($note->patient_signature_path)->not->toBeNull();
     expect($note->pdf_path)->not->toBeNull();
 
     Storage::disk('local')->assertExists($note->signature_path);
+    Storage::disk('local')->assertExists($note->patient_signature_path);
     Storage::disk('local')->assertExists($note->pdf_path);
 
     Mail::assertSent(NoteReadyForOffice::class, function (NoteReadyForOffice $mail) use ($note) {
@@ -45,7 +49,7 @@ test('staff can fill out, sign, and email a note to the office', function () {
     });
 });
 
-test('a note cannot be sent without a signature', function () {
+test('a note cannot be sent without a staff signature', function () {
     $user = User::factory()->create();
     $patient = Patient::factory()->create();
 
@@ -53,8 +57,25 @@ test('a note cannot be sent without a signature', function () {
         ->test('pages::patients.notes.create', ['patient' => $patient, 'type' => Note::TYPE_IE])
         ->set('fields.assessment', 'Assessment text.')
         ->set('fields.plan', 'Plan text.')
+        ->set('patientSignature', FAKE_SIGNATURE)
         ->call('signAndSend')
         ->assertHasErrors('signature');
+
+    expect(Note::count())->toBe(0);
+    Mail::assertNothingSent();
+});
+
+test('a note cannot be sent without a patient signature', function () {
+    $user = User::factory()->create();
+    $patient = Patient::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::patients.notes.create', ['patient' => $patient, 'type' => Note::TYPE_IE])
+        ->set('fields.assessment', 'Assessment text.')
+        ->set('fields.plan', 'Plan text.')
+        ->set('signature', FAKE_SIGNATURE)
+        ->call('signAndSend')
+        ->assertHasErrors('patientSignature');
 
     expect(Note::count())->toBe(0);
     Mail::assertNothingSent();
@@ -87,4 +108,14 @@ test('office can be notified again by resending a signed note', function () {
         ->call('resend');
 
     Mail::assertSent(NoteReadyForOffice::class, 1);
+});
+
+test('the office notification email actually renders', function () {
+    // Mail::fake() (used everywhere else in this file) never renders the message body,
+    // so it can't catch a broken view/markdown reference — render it for real here.
+    $note = Note::factory()->emailed()->create();
+
+    $html = (new NoteReadyForOffice($note))->render();
+
+    expect($html)->toContain($note->patient->name);
 });

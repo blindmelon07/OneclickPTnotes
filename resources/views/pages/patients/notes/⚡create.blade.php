@@ -20,6 +20,8 @@ new #[Title('New Note')] class extends Component {
 
     public ?string $signature = null;
 
+    public ?string $patientSignature = null;
+
     public function mount(Patient $patient, string $type): void
     {
         abort_unless(in_array($type, Note::types(), true), 404);
@@ -71,6 +73,12 @@ new #[Title('New Note')] class extends Component {
             return;
         }
 
+        if (blank($this->patientSignature)) {
+            $this->addError('patientSignature', __('Patient signature is required before submitting.'));
+
+            return;
+        }
+
         $note = Note::create([
             'patient_id' => $this->patient->id,
             'author_id' => auth()->id(),
@@ -79,13 +87,21 @@ new #[Title('New Note')] class extends Component {
         ]);
 
         [, $base64] = explode(',', $this->signature, 2);
+        [, $patientBase64] = explode(',', $this->patientSignature, 2);
 
         $signaturePath = "signatures/{$note->id}.png";
         Storage::disk('local')->put($signaturePath, base64_decode($base64));
 
+        $patientSignaturePath = "signatures/{$note->id}-patient.png";
+        Storage::disk('local')->put($patientSignaturePath, base64_decode($patientBase64));
+
+        $now = now();
+
         $note->forceFill([
             'signature_path' => $signaturePath,
-            'signed_at' => now(),
+            'signed_at' => $now,
+            'patient_signature_path' => $patientSignaturePath,
+            'patient_signed_at' => $now,
         ])->save();
 
         $note->forceFill([
@@ -133,9 +149,16 @@ new #[Title('New Note')] class extends Component {
         <flux:textarea wire:model="fields.therapist_notes" :label="__('Additional Therapist Notes')" rows="3" />
 
         <div>
-            <flux:label>{{ __('Signature') }}</flux:label>
+            <flux:label>{{ __('Staff Signature') }}</flux:label>
             <x-signature-pad model="signature" class="mt-2" />
             <flux:error name="signature" />
+        </div>
+
+        <div>
+            <flux:label>{{ __('Patient Signature') }}</flux:label>
+            <flux:text class="text-sm">{{ __('Hand the device to the patient to sign below.') }}</flux:text>
+            <x-signature-pad model="patientSignature" class="mt-2" />
+            <flux:error name="patientSignature" />
         </div>
 
         <div class="flex justify-end">

@@ -43,6 +43,8 @@ class NoteFactory extends Factory
         return $this->state([
             'signature_path' => 'signatures/fake-signature.png',
             'signed_at' => now(),
+            'patient_signature_path' => 'signatures/fake-signature-patient.png',
+            'patient_signed_at' => now(),
         ]);
     }
 

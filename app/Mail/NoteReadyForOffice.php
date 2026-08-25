@@ -38,7 +38,7 @@ class NoteReadyForOffice extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.notes.ready',
+            markdown: 'emails.notes.ready',
         );
     }
 

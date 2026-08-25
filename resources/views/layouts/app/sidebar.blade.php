@@ -21,6 +21,9 @@
                     <flux:sidebar.item icon="users" :href="route('patients.index')" :current="request()->routeIs('patients.*') || request()->routeIs('notes.show')" wire:navigate>
                         {{ __('Patients') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="calendar-days" :href="route('calendar')" :current="request()->routeIs('calendar')" wire:navigate>
+                        {{ __('Calendar') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="identification" :href="route('doctors.index')" :current="request()->routeIs('doctors.*')" wire:navigate>
                         {{ __('Doctors') }}
                     </flux:sidebar.item>
@@ -31,6 +34,14 @@
                         {{ __('Insurance') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                @can('invoices.manage')
+                    <flux:sidebar.group :heading="__('Billing')" class="grid">
+                        <flux:sidebar.item icon="document-currency-dollar" :href="route('invoices.index')" :current="request()->routeIs('invoices.*')" wire:navigate>
+                            {{ __('Invoices') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endcan
 
                 @can('users.view')
                     <flux:sidebar.group :heading="__('Authentication')" class="grid">

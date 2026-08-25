@@ -28,15 +28,27 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property string $calendar_color
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'calendar_color'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, LogsActivity, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * Mirrors the `calendar_color` column's database default so a freshly
+     * created/unsaved instance behaves the same as one just fetched from the
+     * database, before any round-trip has happened.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'calendar_color' => 'red',
+    ];
 
     /**
      * Get the attributes that should be cast.

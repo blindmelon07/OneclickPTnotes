@@ -57,3 +57,18 @@ test('the patient profile shows demographic and treatment info', function () {
         ->assertSee($patient->name)
         ->assertSee('Post-op knee replacement');
 });
+
+test('a patient can be assigned to a pt assistant', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $ptAssistant = User::factory()->create()->assignRole('PT Assistant');
+    $patient = Patient::factory()->create();
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('pt_assistant_id', $ptAssistant->id)
+        ->call('updatePatient')
+        ->assertHasNoErrors();
+
+    expect($patient->fresh()->pt_assistant_id)->toBe($ptAssistant->id);
+    expect($patient->fresh()->ptAssistant->name)->toBe($ptAssistant->name);
+});

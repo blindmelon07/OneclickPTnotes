@@ -58,10 +58,19 @@
 
     <div class="signature-block">
         @if ($note->signature_path)
-            <img src="{{ $signatureDataUri }}" alt="Signature">
+            <img src="{{ $signatureDataUri }}" alt="Staff signature">
         @endif
         <div class="signature-meta">
-            Signed by {{ $note->author?->name }} on {{ optional($note->signed_at)->format('M j, Y g:i A') }}
+            Signed by {{ $note->author?->name }} (staff) on {{ optional($note->signed_at)->format('M j, Y g:i A') }}
+        </div>
+    </div>
+
+    <div class="signature-block">
+        @if ($note->patient_signature_path)
+            <img src="{{ $patientSignatureDataUri }}" alt="Patient signature">
+        @endif
+        <div class="signature-meta">
+            Signed by {{ $note->patient->name }} (patient) on {{ optional($note->patient_signed_at)->format('M j, Y g:i A') }}
         </div>
     </div>
 </body>

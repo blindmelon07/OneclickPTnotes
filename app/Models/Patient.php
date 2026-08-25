@@ -19,6 +19,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'doctor_id',
     'insurance_company_id',
     'home_health_agency_id',
+    'pt_assistant_id',
     'approved_visits',
     'cert_period',
     'date_referred',
@@ -80,6 +81,14 @@ class Patient extends Model
     }
 
     /**
+     * @return BelongsTo<User, $this>
+     */
+    public function ptAssistant(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pt_assistant_id');
+    }
+
+    /**
      * @return HasMany<Visit, $this>
      */
     public function visits(): HasMany
@@ -121,7 +130,7 @@ class Patient extends Model
         return LogOptions::defaults()
             ->logOnly([
                 'name', 'address', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id',
-                'home_health_agency_id', 'approved_visits', 'cert_period', 'date_referred',
+                'home_health_agency_id', 'pt_assistant_id', 'approved_visits', 'cert_period', 'date_referred',
                 'date_of_ie', 'date_of_re', 'date_of_dc', 'pt_freq', 'pta_visits', 'status',
             ])
             ->logOnlyDirty()

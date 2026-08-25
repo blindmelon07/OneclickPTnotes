@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::livewire('calendar', 'pages::calendar')->name('calendar');
     Route::livewire('patients', 'pages::patients.index')->name('patients.index');
     Route::livewire('patients/{patient}', 'pages::patients.show')->name('patients.show');
     Route::livewire('patients/{patient}/notes/create/{type}', 'pages::patients.notes.create')->name('patients.notes.create');
@@ -24,6 +25,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return Storage::disk('local')->response($note->signature_path);
     })->name('notes.signature');
+
+    Route::get('notes/{note}/patient-signature', function (Note $note) {
+        abort_unless($note->patient_signature_path && Storage::disk('local')->exists($note->patient_signature_path), 404);
+
+        return Storage::disk('local')->response($note->patient_signature_path);
+    })->name('notes.patient-signature');
 
     Route::livewire('doctors', 'pages::doctors.index')->name('doctors.index');
     Route::livewire('home-health-agencies', 'pages::home-health-agencies.index')->name('home-health-agencies.index');

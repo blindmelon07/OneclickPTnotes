@@ -23,6 +23,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'permissions.manage',
         'patients.manage',
         'notes.manage',
+        'invoices.manage',
     ];
 
     /**
@@ -34,6 +35,51 @@ class RolesAndPermissionsSeeder extends Seeder
     protected array $staffPermissions = [
         'patients.manage',
         'notes.manage',
+    ];
+
+    /**
+     * Corporate Secretary: oversight of staff and role assignments, no edit rights.
+     *
+     * @var array<int, string>
+     */
+    protected array $corporateSecretaryPermissions = [
+        'users.view',
+        'roles.view',
+    ];
+
+    /**
+     * Biller: same clinical access as Staff, needed to see patient/visit info for billing.
+     *
+     * @var array<int, string>
+     */
+    protected array $billerPermissions = [
+        'patients.manage',
+        'notes.manage',
+        'invoices.manage',
+    ];
+
+    /**
+     * Office Manager: day-to-day clinical access plus managing staff accounts.
+     *
+     * @var array<int, string>
+     */
+    protected array $officeManagerPermissions = [
+        'patients.manage',
+        'notes.manage',
+        'users.view',
+        'users.manage',
+        'invoices.manage',
+    ];
+
+    /**
+     * PT Assistant: same clinical access as Staff/Biller, needed to view and document patient visits.
+     *
+     * @var array<int, string>
+     */
+    protected array $ptAssistantPermissions = [
+        'patients.manage',
+        'notes.manage',
+        'invoices.manage',
     ];
 
     /**
@@ -54,5 +100,17 @@ class RolesAndPermissionsSeeder extends Seeder
         $staff->syncPermissions($this->staffPermissions);
 
         Role::firstOrCreate(['name' => 'user']);
+
+        $corporateSecretary = Role::firstOrCreate(['name' => 'Corporate Secretary']);
+        $corporateSecretary->syncPermissions($this->corporateSecretaryPermissions);
+
+        $biller = Role::firstOrCreate(['name' => 'Biller']);
+        $biller->syncPermissions($this->billerPermissions);
+
+        $officeManager = Role::firstOrCreate(['name' => 'Office Manager']);
+        $officeManager->syncPermissions($this->officeManagerPermissions);
+
+        $ptAssistant = Role::firstOrCreate(['name' => 'PT Assistant']);
+        $ptAssistant->syncPermissions($this->ptAssistantPermissions);
     }
 }
