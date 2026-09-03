@@ -14,6 +14,8 @@ new #[Title('Note')] class extends Component
     public function mount(Note $note): void
     {
         $this->note = $note->load(['patient', 'author', 'visit']);
+
+        abort_unless($this->note->patient->isVisibleTo(auth()->user()), 403);
     }
 
     public function resend(): void
@@ -81,12 +83,27 @@ new #[Title('Note')] class extends Component
     </div>
 
     <div class="max-w-2xl space-y-6">
-        @foreach (Note::dataFieldLabels() as $key => $label)
-            <div>
-                <flux:heading size="sm">{{ $label }}</flux:heading>
-                <flux:text class="whitespace-pre-wrap">{{ $note->data[$key] ?? '—' }}</flux:text>
-            </div>
-        @endforeach
+        @if (in_array($note->type, Note::wizardTypes(), true))
+            @foreach ($note->data ?? [] as $key => $value)
+                <div>
+                    <flux:heading size="sm">{{ Str::headline($key) }}</flux:heading>
+                    <flux:text class="whitespace-pre-wrap">
+                        @if (is_array($value))
+                            {{ collect($value)->flatten()->filter()->implode(', ') ?: '—' }}
+                        @else
+                            {{ filled($value) ? $value : '—' }}
+                        @endif
+                    </flux:text>
+                </div>
+            @endforeach
+        @else
+            @foreach (Note::dataFieldLabels() as $key => $label)
+                <div>
+                    <flux:heading size="sm">{{ $label }}</flux:heading>
+                    <flux:text class="whitespace-pre-wrap">{{ $note->data[$key] ?? '—' }}</flux:text>
+                </div>
+            @endforeach
+        @endif
 
         <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
             <flux:heading size="sm">{{ __('Staff Signature') }}</flux:heading>

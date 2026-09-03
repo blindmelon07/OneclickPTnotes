@@ -25,6 +25,7 @@ new #[Title('New Note')] class extends Component {
     public function mount(Patient $patient, string $type): void
     {
         abort_unless(in_array($type, Note::types(), true), 404);
+        abort_unless($patient->isVisibleTo(auth()->user()), 403);
 
         $this->patient = $patient;
         $this->type = $type;

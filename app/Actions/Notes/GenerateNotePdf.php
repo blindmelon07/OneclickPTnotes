@@ -15,7 +15,7 @@ class GenerateNotePdf
     {
         $note->loadMissing(['patient.doctor', 'patient.insuranceCompany', 'patient.homeHealthAgency', 'visit', 'author']);
 
-        $pdf = Pdf::loadView('pdf.notes.note', [
+        $pdf = Pdf::loadView($this->viewFor($note), [
             'note' => $note,
             'signatureDataUri' => $this->signatureDataUri($note->signature_path),
             'patientSignatureDataUri' => $this->signatureDataUri($note->patient_signature_path),
@@ -26,6 +26,21 @@ class GenerateNotePdf
         Storage::disk('local')->put($path, $pdf->output());
 
         return $path;
+    }
+
+    /**
+     * Each wizard form prints on its own template; the clinical IE/RE/DC/FU
+     * notes all share `pdf.notes.note`.
+     */
+    protected function viewFor(Note $note): string
+    {
+        return match ($note->type) {
+            Note::TYPE_ROUTE_SHEET => 'pdf.notes.route-sheet',
+            Note::TYPE_VISIT_NOTE => 'pdf.notes.visit-note',
+            Note::TYPE_MISSED_VISIT => 'pdf.notes.missed-visit',
+            Note::TYPE_COMMUNICATION => 'pdf.notes.communication',
+            default => 'pdf.notes.note',
+        };
     }
 
     /**

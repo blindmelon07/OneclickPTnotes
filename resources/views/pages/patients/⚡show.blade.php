@@ -50,17 +50,26 @@ new #[Title('Patient')] class extends Component {
 
     public string $status = Patient::STATUS_ACTIVE;
 
-    public string $visitScheduledAt = '';
+    /**
+     * Visits are no longer typed when scheduled — every one is booked as a
+     * follow-up, which is also the rate it bills at (see `config/billing.php`).
+     */
+    public const DEFAULT_VISIT_TYPE = Note::TYPE_FU;
 
-    public string $visitType = Note::TYPE_FU;
+    public string $visitScheduledAt = '';
 
     public function mount(Patient $patient): void
     {
+        abort_unless($patient->isVisibleTo(auth()->user()), 403);
+
         $this->patient = $patient;
-        $this->fill($patient->only([
+
+        // Columns left empty stay null in the database, but the string-typed
+        // properties below cannot take null — drop them and keep the '' default.
+        $this->fill(array_filter($patient->only([
             'name', 'address', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id',
             'home_health_agency_id', 'pt_assistant_id', 'approved_visits', 'cert_period', 'pt_freq', 'pta_visits', 'status',
-        ]));
+        ]), fn (mixed $value) => $value !== null));
 
         $this->date_referred = $patient->date_referred?->toDateString();
         $this->date_of_ie = $patient->date_of_ie?->toDateString();
@@ -92,27 +101,66 @@ new #[Title('Patient')] class extends Component {
             'status' => ['required', 'in:'.implode(',', Patient::statuses())],
         ]);
 
-        $this->patient->update($validated);
+        if (auth()->user()->isRestrictedToAssignedPatients()) {
+            unset($validated['pt_assistant_id']);
+        }
+
+        // Untouched text fields arrive as '' — store them as null so an empty
+        // column stays empty rather than becoming a blank string.
+        $this->patient->update(array_map(
+            fn (mixed $value) => $value === '' ? null : $value,
+            $validated,
+        ));
 
         Flux::modal('edit-patient')->close();
 
         Flux::toast(variant: 'success', text: __('Patient updated.'));
     }
 
+    /**
+     * Assign (or clear) the patient's PT Assistant directly, without going
+     * through the edit form.
+     */
+    public function assignPtAssistant(?int $userId = null): void
+    {
+        abort_unless(auth()->user()->can('patients.manage'), 403);
+        abort_if(auth()->user()->isRestrictedToAssignedPatients(), 403);
+
+        abort_unless(
+            $userId === null || $this->ptAssistants->contains('id', $userId),
+            422,
+        );
+
+        $this->patient->update(['pt_assistant_id' => $userId]);
+
+        $this->pt_assistant_id = $userId;
+
+        $this->patient->refresh();
+
+        Flux::toast(variant: 'success', text: $userId
+            ? __('Assigned to :name.', ['name' => $this->patient->ptAssistant->name])
+            : __('PT Assistant cleared.'));
+    }
+
     public function scheduleVisit(): void
     {
         $validated = $this->validate([
             'visitScheduledAt' => ['required', 'date'],
-            'visitType' => ['required', 'in:'.implode(',', Note::types())],
         ]);
 
+        $sequence = $this->patient->nextVisitNumber();
+
         $this->patient->visits()->create([
-            'therapist_id' => auth()->id(),
-            'visit_type' => $validated['visitType'],
+            'therapist_id' => $this->patient->therapistForVisitNumber($sequence)?->id ?? auth()->id(),
+            'visit_type' => self::DEFAULT_VISIT_TYPE,
             'scheduled_at' => $validated['visitScheduledAt'],
         ]);
 
         $this->reset(['visitScheduledAt']);
+
+        // Computed properties cache per request — drop them so the table and
+        // the counts re-read the visit just created.
+        unset($this->upcomingVisits, $this->visitProgress, $this->visitNumbers);
 
         Flux::modal('schedule-visit')->close();
 
@@ -152,16 +200,42 @@ new #[Title('Patient')] class extends Component {
     #[Computed]
     public function ptAssistants(): Collection
     {
-        return User::role('PT Assistant')->orderBy('name')->get();
+        return User::role(User::ROLE_PT_ASSISTANT)->orderBy('name')->get();
     }
 
     /**
-     * @return Collection<int, Note>
+     * Where this patient stands in their course of care.
+     *
+     * @return array{approved: int|null, scheduled: int, remaining: int|null}
      */
     #[Computed]
-    public function notes(): Collection
+    public function visitProgress(): array
     {
-        return $this->patient->notes()->latest()->get();
+        $approved = $this->patient->approved_visits;
+        $scheduled = $this->patient->visits()->count();
+
+        return [
+            'approved' => $approved,
+            'scheduled' => $scheduled,
+            'remaining' => $approved === null ? null : max(0, (int) $approved - $scheduled),
+        ];
+    }
+
+    /**
+     * Each visit's position in the course, keyed by visit id — the same
+     * ordering `Patient::therapistForVisitNumber()` assigns therapists by.
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function visitNumbers(): array
+    {
+        return $this->patient->visits()
+            ->orderBy('id')
+            ->pluck('id')
+            ->flip()
+            ->map(fn (int $index) => $index + 1)
+            ->all();
     }
 
     /**
@@ -205,73 +279,73 @@ new #[Title('Patient')] class extends Component {
                     <div><dt class="text-zinc-500">{{ __('Doctor') }}</dt><dd>{{ $patient->doctor?->name ?: '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('Insurance') }}</dt><dd>{{ $patient->insuranceCompany?->name ?: '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('HHA') }}</dt><dd>{{ $patient->homeHealthAgency?->name ?: '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('PT Assistant') }}</dt><dd>{{ $patient->ptAssistant?->name ?: '—' }}</dd></div>
+                    <div>
+                        <dt class="text-zinc-500">{{ __('PT Assistant') }}</dt>
+                        <dd class="flex flex-wrap items-center gap-2">
+                            <span>{{ $patient->ptAssistant?->name ?: '—' }}</span>
+
+                            @can('patients.manage')
+                                @unless (auth()->user()->isRestrictedToAssignedPatients())
+                                    <flux:dropdown>
+                                        <flux:button size="xs" variant="ghost" icon="pencil">{{ __('Assign') }}</flux:button>
+
+                                        <flux:menu>
+                                            @forelse ($this->ptAssistants as $assistant)
+                                                <flux:menu.item wire:click="assignPtAssistant({{ $assistant->id }})">
+                                                    {{ $assistant->name }}
+                                                </flux:menu.item>
+                                            @empty
+                                                <flux:menu.item disabled>{{ __('No PT Assistants yet') }}</flux:menu.item>
+                                            @endforelse
+
+                                            @if ($patient->pt_assistant_id)
+                                                <flux:menu.separator />
+                                                <flux:menu.item variant="danger" wire:click="assignPtAssistant">
+                                                    {{ __('Clear assignment') }}
+                                                </flux:menu.item>
+                                            @endif
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                @endunless
+                            @endcan
+                        </dd>
+                    </div>
                 </dl>
             </div>
 
             <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
-                <flux:heading size="sm" class="mb-3">{{ __('Treatment info') }}</flux:heading>
+                <flux:heading size="sm" class="mb-3">{{ __('Visits') }}</flux:heading>
                 <dl class="space-y-2 text-sm">
-                    <div><dt class="text-zinc-500">{{ __('Approved visits') }}</dt><dd>{{ $patient->approved_visits ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Cert period') }}</dt><dd>{{ $patient->cert_period ?: '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Date referred') }}</dt><dd>{{ $patient->date_referred?->format('M j, Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Date of IE') }}</dt><dd>{{ $patient->date_of_ie?->format('M j, Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Date of RE') }}</dt><dd>{{ $patient->date_of_re?->format('M j, Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Date of DC') }}</dt><dd>{{ $patient->date_of_dc?->format('M j, Y') ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('PT frequency') }}</dt><dd>{{ $patient->pt_freq ?: '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('# PTA visits') }}</dt><dd>{{ $patient->pta_visits ?? '—' }}</dd></div>
+                    <div>
+                        <dt class="text-zinc-500">{{ __('Approved') }}</dt>
+                        <dd>{{ $this->visitProgress['approved'] ?? '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-zinc-500">{{ __('Scheduled') }}</dt>
+                        <dd>
+                            {{ $this->visitProgress['scheduled'] }}
+                            @if ($this->visitProgress['approved'])
+                                {{ __('of :approved', ['approved' => $this->visitProgress['approved']]) }}
+                            @endif
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-zinc-500">{{ __('Remaining') }}</dt>
+                        <dd>{{ $this->visitProgress['remaining'] ?? '—' }}</dd>
+                    </div>
                 </dl>
+
+                @if ($this->visitProgress['approved'] && $this->visitProgress['scheduled'] > $this->visitProgress['approved'])
+                    <flux:badge color="amber" size="sm" class="mt-3">{{ __('Over approved count') }}</flux:badge>
+                @endif
+
+                <flux:text class="mt-3 text-xs">
+                    {{ __('The first and last visit are performed by the admin; the rest by the assigned PT Assistant.') }}
+                </flux:text>
             </div>
         </div>
 
         <div class="min-w-0 lg:col-span-2 space-y-6">
-            <div>
-                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <flux:heading size="sm">{{ __('Notes') }}</flux:heading>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach (\App\Models\Note::types() as $type)
-                            <flux:button size="sm" :href="route('patients.notes.create', [$patient, $type])" wire:navigate>
-                                {{ __('New :type', ['type' => strtoupper($type)]) }}
-                            </flux:button>
-                        @endforeach
-                    </div>
-                </div>
-
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column>{{ __('Type') }}</flux:table.column>
-                        <flux:table.column>{{ __('Author') }}</flux:table.column>
-                        <flux:table.column>{{ __('Status') }}</flux:table.column>
-                        <flux:table.column>{{ __('Date') }}</flux:table.column>
-                    </flux:table.columns>
-
-                    <flux:table.rows>
-                        @forelse ($this->notes as $note)
-                            <flux:table.row :key="$note->id">
-                                <flux:table.cell variant="strong">
-                                    <flux:link :href="route('notes.show', $note)" wire:navigate>{{ $note->label() }}</flux:link>
-                                </flux:table.cell>
-                                <flux:table.cell>{{ $note->author?->name }}</flux:table.cell>
-                                <flux:table.cell>
-                                    @if ($note->isEmailed())
-                                        <flux:badge color="green" size="sm">{{ __('Emailed') }}</flux:badge>
-                                    @elseif ($note->isSigned())
-                                        <flux:badge color="amber" size="sm">{{ __('Signed') }}</flux:badge>
-                                    @else
-                                        <flux:badge color="zinc" size="sm">{{ __('Draft') }}</flux:badge>
-                                    @endif
-                                </flux:table.cell>
-                                <flux:table.cell>{{ $note->created_at->format('M j, Y') }}</flux:table.cell>
-                            </flux:table.row>
-                        @empty
-                            <flux:table.row>
-                                <flux:table.cell colspan="4">{{ __('No notes yet.') }}</flux:table.cell>
-                            </flux:table.row>
-                        @endforelse
-                    </flux:table.rows>
-                </flux:table>
-            </div>
-
             <div>
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <flux:heading size="sm">{{ __('Upcoming visits') }}</flux:heading>
@@ -282,21 +356,32 @@ new #[Title('Patient')] class extends Component {
 
                 <flux:table>
                     <flux:table.columns>
+                        <flux:table.column>{{ __('Visit') }}</flux:table.column>
                         <flux:table.column>{{ __('Date') }}</flux:table.column>
-                        <flux:table.column>{{ __('Type') }}</flux:table.column>
                         <flux:table.column>{{ __('Therapist') }}</flux:table.column>
+                        <flux:table.column>{{ __('Documentation') }}</flux:table.column>
                     </flux:table.columns>
 
                     <flux:table.rows>
                         @forelse ($this->upcomingVisits as $visit)
                             <flux:table.row :key="$visit->id">
+                                <flux:table.cell variant="strong">
+                                    {{ $this->visitNumbers[$visit->id] ?? '—' }}
+                                    @if ($this->visitProgress['approved'])
+                                        <span class="text-zinc-500">{{ __('of :approved', ['approved' => $this->visitProgress['approved']]) }}</span>
+                                    @endif
+                                </flux:table.cell>
                                 <flux:table.cell>{{ $visit->scheduled_at->format('M j, Y g:i A') }}</flux:table.cell>
-                                <flux:table.cell>{{ strtoupper($visit->visit_type) }}</flux:table.cell>
                                 <flux:table.cell>{{ $visit->therapist?->name }}</flux:table.cell>
+                                <flux:table.cell>
+                                    <flux:button size="sm" variant="primary" icon="arrow-right" :href="route('patients.visits.document', [$patient, $visit])" wire:navigate>
+                                        {{ __('Proceed') }}
+                                    </flux:button>
+                                </flux:table.cell>
                             </flux:table.row>
                         @empty
                             <flux:table.row>
-                                <flux:table.cell colspan="3">{{ __('No upcoming visits.') }}</flux:table.cell>
+                                <flux:table.cell colspan="4">{{ __('No upcoming visits.') }}</flux:table.cell>
                             </flux:table.row>
                         @endforelse
                     </flux:table.rows>
@@ -309,11 +394,6 @@ new #[Title('Patient')] class extends Component {
         <form wire:submit="scheduleVisit" class="space-y-4">
             <flux:heading size="lg">{{ __('Schedule visit') }}</flux:heading>
             <flux:input wire:model="visitScheduledAt" type="datetime-local" :label="__('Date & time')" required />
-            <flux:select wire:model="visitType" :label="__('Visit type')">
-                @foreach (\App\Models\Note::types() as $type)
-                    <flux:select.option :value="$type">{{ strtoupper($type) }}</flux:select.option>
-                @endforeach
-            </flux:select>
             <div class="flex">
                 <flux:spacer />
                 <flux:button type="submit" variant="primary">{{ __('Schedule') }}</flux:button>
@@ -330,29 +410,31 @@ new #[Title('Patient')] class extends Component {
             <flux:input wire:model="phone" :label="__('Phone')" />
             <flux:input wire:model="diagnosis" :label="__('Diagnosis')" />
 
-            <flux:select wire:model="doctor_id" :label="__('Doctor')" :placeholder="__('Select doctor')">
+            <flux:select wire:model.live="doctor_id" :label="__('Doctor')" :placeholder="__('Select doctor')">
                 @foreach ($this->doctors as $doctor)
                     <flux:select.option :value="$doctor->id">{{ $doctor->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="insurance_company_id" :label="__('Insurance')" :placeholder="__('Select insurance')">
+            <flux:select wire:model.live="insurance_company_id" :label="__('Insurance')" :placeholder="__('Select insurance')">
                 @foreach ($this->insuranceCompanies as $insurance)
                     <flux:select.option :value="$insurance->id">{{ $insurance->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="home_health_agency_id" :label="__('HHA')" :placeholder="__('Select HHA')">
+            <flux:select wire:model.live="home_health_agency_id" :label="__('HHA')" :placeholder="__('Select HHA')">
                 @foreach ($this->homeHealthAgencies as $hha)
                     <flux:select.option :value="$hha->id">{{ $hha->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="pt_assistant_id" :label="__('PT Assistant')" :placeholder="__('Select PT Assistant')">
-                @foreach ($this->ptAssistants as $ptAssistant)
-                    <flux:select.option :value="$ptAssistant->id">{{ $ptAssistant->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+            @unless (auth()->user()->isRestrictedToAssignedPatients())
+                <flux:select wire:model.live="pt_assistant_id" :label="__('PT Assistant')" :placeholder="__('Select PT Assistant')">
+                    @foreach ($this->ptAssistants as $ptAssistant)
+                        <flux:select.option :value="$ptAssistant->id">{{ $ptAssistant->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endunless
 
             <flux:input wire:model="approved_visits" type="number" :label="__('Approved visits')" />
             <flux:input wire:model="cert_period" :label="__('Cert period')" />
@@ -363,7 +445,7 @@ new #[Title('Patient')] class extends Component {
             <flux:input wire:model="pt_freq" :label="__('PT frequency')" />
             <flux:input wire:model="pta_visits" type="number" :label="__('# PTA visits')" />
 
-            <flux:select wire:model="status" :label="__('Status')">
+            <flux:select wire:model.live="status" :label="__('Status')">
                 @foreach (Patient::statuses() as $statusOption)
                     <flux:select.option :value="$statusOption">{{ ucfirst($statusOption) }}</flux:select.option>
                 @endforeach

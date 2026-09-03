@@ -33,6 +33,8 @@ new #[Title('Patients')] class extends Component {
 
     public ?int $pt_assistant_id = null;
 
+    public ?int $approved_visits = null;
+
     public string $status = Patient::STATUS_ACTIVE;
 
     public function updatingSearch(): void
@@ -57,12 +59,17 @@ new #[Title('Patients')] class extends Component {
             'insurance_company_id' => ['nullable', 'exists:insurance_companies,id'],
             'home_health_agency_id' => ['nullable', 'exists:home_health_agencies,id'],
             'pt_assistant_id' => ['nullable', 'exists:users,id'],
+            'approved_visits' => ['nullable', 'integer', 'min:1'],
             'status' => ['required', 'in:'.implode(',', Patient::statuses())],
         ]);
 
+        if (auth()->user()->isRestrictedToAssignedPatients()) {
+            $validated['pt_assistant_id'] = auth()->id();
+        }
+
         $patient = Patient::create($validated);
 
-        $this->reset(['name', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id', 'home_health_agency_id', 'pt_assistant_id']);
+        $this->reset(['name', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id', 'home_health_agency_id', 'pt_assistant_id', 'approved_visits']);
         $this->status = Patient::STATUS_ACTIVE;
 
         Flux::modal('create-patient')->close();
@@ -103,13 +110,14 @@ new #[Title('Patients')] class extends Component {
     #[Computed]
     public function ptAssistants(): Collection
     {
-        return User::role('PT Assistant')->orderBy('name')->get();
+        return User::role(User::ROLE_PT_ASSISTANT)->orderBy('name')->get();
     }
 
     #[Computed]
     public function patients()
     {
         return Patient::query()
+            ->visibleTo(auth()->user())
             ->with(['homeHealthAgency', 'ptAssistant'])
             ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
             ->when($this->statusFilter, fn ($query) => $query->where('status', $this->statusFilter))
@@ -178,31 +186,39 @@ new #[Title('Patients')] class extends Component {
             <flux:input wire:model="phone" :label="__('Phone')" />
             <flux:input wire:model="diagnosis" :label="__('Diagnosis')" />
 
-            <flux:select wire:model="doctor_id" :label="__('Doctor')" :placeholder="__('Select doctor')">
+            <flux:select wire:model.live="doctor_id" :label="__('Doctor')" :placeholder="__('Select doctor')">
                 @foreach ($this->doctors as $doctor)
                     <flux:select.option :value="$doctor->id">{{ $doctor->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="insurance_company_id" :label="__('Insurance')" :placeholder="__('Select insurance')">
+            <flux:select wire:model.live="insurance_company_id" :label="__('Insurance')" :placeholder="__('Select insurance')">
                 @foreach ($this->insuranceCompanies as $insurance)
                     <flux:select.option :value="$insurance->id">{{ $insurance->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="home_health_agency_id" :label="__('HHA')" :placeholder="__('Select HHA')">
+            <flux:select wire:model.live="home_health_agency_id" :label="__('HHA')" :placeholder="__('Select HHA')">
                 @foreach ($this->homeHealthAgencies as $hha)
                     <flux:select.option :value="$hha->id">{{ $hha->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="pt_assistant_id" :label="__('PT Assistant')" :placeholder="__('Select PT Assistant')">
+            <flux:select wire:model.live="pt_assistant_id" :label="__('PT Assistant')" :placeholder="__('Select PT Assistant')">
                 @foreach ($this->ptAssistants as $ptAssistant)
                     <flux:select.option :value="$ptAssistant->id">{{ $ptAssistant->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="status" :label="__('Status')">
+            <flux:input
+                wire:model="approved_visits"
+                type="number"
+                min="1"
+                :label="__('Number of visits')"
+                :description="__('The first and last visit are performed by the admin; the rest by the assigned PT Assistant.')"
+            />
+
+            <flux:select wire:model.live="status" :label="__('Status')">
                 @foreach (Patient::statuses() as $statusOption)
                     <flux:select.option :value="$statusOption">{{ ucfirst($statusOption) }}</flux:select.option>
                 @endforeach

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Database\Factories\PatientFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -89,6 +91,30 @@ class Patient extends Model
     }
 
     /**
+     * Limit the roster to what the given user is allowed to see — their own
+     * caseload for a PT Assistant, everything for everyone else.
+     *
+     * @param  Builder<Patient>  $query
+     */
+    #[Scope]
+    protected function visibleTo(Builder $query, User $user): void
+    {
+        $query->when(
+            $user->isRestrictedToAssignedPatients(),
+            fn (Builder $query) => $query->where('pt_assistant_id', $user->id),
+        );
+    }
+
+    /**
+     * Whether the given user is allowed to open this patient's chart.
+     */
+    public function isVisibleTo(User $user): bool
+    {
+        return ! $user->isRestrictedToAssignedPatients()
+            || $this->pt_assistant_id === $user->id;
+    }
+
+    /**
      * @return HasMany<Visit, $this>
      */
     public function visits(): HasMany
@@ -102,6 +128,30 @@ class Patient extends Model
     public function notes(): HasMany
     {
         return $this->hasMany(Note::class);
+    }
+
+    /**
+     * Where the next scheduled visit falls in this patient's course of care.
+     */
+    public function nextVisitNumber(): int
+    {
+        return $this->visits()->count() + 1;
+    }
+
+    /**
+     * Who performs a given visit: the admin takes the first and the last visit
+     * of the course personally, the assigned PT Assistant takes everything in
+     * between. `approved_visits` is what makes a visit "the last" one, so with
+     * no count set only the first visit falls to the admin.
+     */
+    public function therapistForVisitNumber(int $sequence): ?User
+    {
+        $isFirstVisit = $sequence === 1;
+        $isFinalVisit = $this->approved_visits !== null && $sequence === (int) $this->approved_visits;
+
+        return $isFirstVisit || $isFinalVisit
+            ? User::supervisingAdmin()
+            : $this->ptAssistant;
     }
 
     /**

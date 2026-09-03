@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\RedirectIfPageHidden;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Livewire::addPersistentMiddleware([
+            RedirectIfPageHidden::class,
             RoleMiddleware::class,
         ]);
     }

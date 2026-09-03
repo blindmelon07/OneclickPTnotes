@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -102,7 +103,22 @@ new #[Title('Manage Roles')] class extends Component {
     #[Computed]
     public function permissions(): Collection
     {
-        return Permission::orderBy('name')->get();
+        return Permission::whereNotIn('name', User::RESTRICTIONS)->orderBy('name')->get();
+    }
+
+    /**
+     * Restrictions are stored as permissions but take access away, so the role
+     * editor lists them separately from the grants — see `User::RESTRICTIONS`.
+     *
+     * @return Collection<int, Permission>
+     */
+    #[Computed]
+    public function restrictions(): Collection
+    {
+        return Permission::whereIn('name', User::RESTRICTIONS)
+            ->get()
+            ->sortBy(fn (Permission $permission) => array_search($permission->name, User::RESTRICTIONS, true))
+            ->values();
     }
 
     /**
@@ -190,6 +206,18 @@ new #[Title('Manage Roles')] class extends Component {
                     <flux:field variant="inline">
                         <flux:checkbox wire:model="selectedPermissions" value="{{ $permission->name }}" />
                         <flux:label>{{ $permission->name }}</flux:label>
+                    </flux:field>
+                @endforeach
+            </div>
+
+            <div class="space-y-2">
+                <flux:label>{{ __('Restrictions') }}</flux:label>
+                <flux:text class="text-sm">{{ __('Take access away from this role. Leave unticked for full access.') }}</flux:text>
+
+                @foreach ($this->restrictions as $restriction)
+                    <flux:field variant="inline">
+                        <flux:checkbox wire:model="selectedPermissions" value="{{ $restriction->name }}" />
+                        <flux:label>{{ \App\Models\User::restrictionLabel($restriction->name) }}</flux:label>
                     </flux:field>
                 @endforeach
             </div>

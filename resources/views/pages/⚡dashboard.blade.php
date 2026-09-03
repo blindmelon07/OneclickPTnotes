@@ -20,11 +20,13 @@ new #[Title('Dashboard')] class extends Component
     #[Computed]
     public function patientStats(): array
     {
+        $visible = fn () => Patient::query()->visibleTo(auth()->user());
+
         return [
-            'total' => Patient::count(),
-            'active' => Patient::where('status', Patient::STATUS_ACTIVE)->count(),
-            'discharged' => Patient::where('status', Patient::STATUS_DISCHARGED)->count(),
-            'hospitalized' => Patient::where('status', Patient::STATUS_HOSPITALIZED)->count(),
+            'total' => $visible()->count(),
+            'active' => $visible()->where('status', Patient::STATUS_ACTIVE)->count(),
+            'discharged' => $visible()->where('status', Patient::STATUS_DISCHARGED)->count(),
+            'hospitalized' => $visible()->where('status', Patient::STATUS_HOSPITALIZED)->count(),
         ];
     }
 

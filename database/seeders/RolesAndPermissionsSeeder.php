@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -25,6 +26,15 @@ class RolesAndPermissionsSeeder extends Seeder
         'notes.manage',
         'invoices.manage',
     ];
+
+    /**
+     * Restrictions take access away from the roles holding them, so they are
+     * deliberately NOT part of the admin role's grant-everything sync — see
+     * `User::RESTRICTIONS`.
+     *
+     * @var array<int, string>
+     */
+    protected array $restrictions = User::RESTRICTIONS;
 
     /**
      * Permissions granted to every authenticated staff member by default,
@@ -80,6 +90,10 @@ class RolesAndPermissionsSeeder extends Seeder
         'patients.manage',
         'notes.manage',
         'invoices.manage',
+        User::RESTRICT_OWN_CASELOAD,
+        User::HIDE_DASHBOARD,
+        User::HIDE_CALENDAR,
+        User::HIDE_DIRECTORIES,
     ];
 
     /**
@@ -89,7 +103,7 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        foreach ($this->permissions as $permission) {
+        foreach ([...$this->permissions, ...$this->restrictions] as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }
 

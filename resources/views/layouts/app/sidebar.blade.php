@@ -6,33 +6,41 @@
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                <x-app-logo :sidebar="true" href="{{ route(auth()->user()->landingRoute()) }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            @php($user = auth()->user())
+
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
+                @unless ($user->isPageHidden(\App\Models\User::HIDE_DASHBOARD))
+                    <flux:sidebar.group :heading="__('Platform')" class="grid">
+                        <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                            {{ __('Dashboard') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endunless
 
                 <flux:sidebar.group :heading="__('Patients')" class="grid">
                     <flux:sidebar.item icon="users" :href="route('patients.index')" :current="request()->routeIs('patients.*') || request()->routeIs('notes.show')" wire:navigate>
                         {{ __('Patients') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="calendar-days" :href="route('calendar')" :current="request()->routeIs('calendar')" wire:navigate>
-                        {{ __('Calendar') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="identification" :href="route('doctors.index')" :current="request()->routeIs('doctors.*')" wire:navigate>
-                        {{ __('Doctors') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="building-office-2" :href="route('home-health-agencies.index')" :current="request()->routeIs('home-health-agencies.*')" wire:navigate>
-                        {{ __('HHAs') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="banknotes" :href="route('insurance-companies.index')" :current="request()->routeIs('insurance-companies.*')" wire:navigate>
-                        {{ __('Insurance') }}
-                    </flux:sidebar.item>
+                    @unless ($user->isPageHidden(\App\Models\User::HIDE_CALENDAR))
+                        <flux:sidebar.item icon="calendar-days" :href="route('calendar')" :current="request()->routeIs('calendar')" wire:navigate>
+                            {{ __('Calendar') }}
+                        </flux:sidebar.item>
+                    @endunless
+                    @unless ($user->isPageHidden(\App\Models\User::HIDE_DIRECTORIES))
+                        <flux:sidebar.item icon="identification" :href="route('doctors.index')" :current="request()->routeIs('doctors.*')" wire:navigate>
+                            {{ __('Doctors') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="building-office-2" :href="route('home-health-agencies.index')" :current="request()->routeIs('home-health-agencies.*')" wire:navigate>
+                            {{ __('HHAs') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="banknotes" :href="route('insurance-companies.index')" :current="request()->routeIs('insurance-companies.*')" wire:navigate>
+                            {{ __('Insurance') }}
+                        </flux:sidebar.item>
+                    @endunless
                 </flux:sidebar.group>
 
                 @can('invoices.manage')
