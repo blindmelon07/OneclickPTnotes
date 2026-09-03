@@ -266,3 +266,29 @@ test('untouched text fields are stored as null rather than empty strings', funct
     expect($patient->cert_period)->toBeNull();
     expect($patient->pt_freq)->toBeNull();
 });
+
+test('the roster loads on a database with no roles seeded', function () {
+    Role::query()->delete();
+
+    $user = User::factory()->create();
+    $patient = Patient::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('patients.index'))
+        ->assertOk()
+        ->assertSee($patient->name);
+});
+
+test('the patient page loads on a database with no roles seeded', function () {
+    $patient = Patient::factory()->create();
+
+    Role::query()->delete();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('patients.show', $patient))
+        ->assertOk();
+
+    expect(User::supervisingAdmin())->toBeNull();
+});

@@ -110,7 +110,7 @@ new #[Title('Patients')] class extends Component {
     #[Computed]
     public function ptAssistants(): Collection
     {
-        return User::role(User::ROLE_PT_ASSISTANT)->orderBy('name')->get();
+        return User::havingRole(User::ROLE_PT_ASSISTANT)->orderBy('name')->get();
     }
 
     #[Computed]

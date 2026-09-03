@@ -6,6 +6,8 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -92,13 +94,27 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Users holding the given role. Unlike Spatie's `role()` scope this returns
+     * an empty result instead of throwing `RoleDoesNotExist` when the role has
+     * not been seeded yet — a page listing PT Assistants should come up empty,
+     * not 500.
+     *
+     * @param  Builder<User>  $query
+     */
+    #[Scope]
+    protected function havingRole(Builder $query, string $role): void
+    {
+        $query->whereHas('roles', fn (Builder $roles) => $roles->where('name', $role));
+    }
+
+    /**
      * The admin who personally performs each patient's first and last visit.
      * The longest-standing admin account, so the choice is stable as staff
      * accounts come and go.
      */
     public static function supervisingAdmin(): ?self
     {
-        return static::role('admin')->orderBy('id')->first();
+        return static::query()->havingRole('admin')->orderBy('id')->first();
     }
 
     /**
