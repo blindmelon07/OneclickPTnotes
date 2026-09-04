@@ -27,6 +27,7 @@ use Spatie\Activitylog\Support\LogOptions;
     'date_referred',
     'date_of_ie',
     'date_of_re',
+    'date_of_re_not_applicable',
     'date_of_dc',
     'pt_freq',
     'pta_visits',
@@ -64,6 +65,7 @@ class Patient extends Model
             'date_referred' => 'date',
             'date_of_ie' => 'date',
             'date_of_re' => 'date',
+            'date_of_re_not_applicable' => 'boolean',
             'date_of_dc' => 'date',
         ];
     }
@@ -223,7 +225,7 @@ class Patient extends Model
             ->logOnly([
                 'name', 'address', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id',
                 'home_health_agency_id', 'pt_assistant_id', 'approved_visits', 'cert_period', 'date_referred',
-                'date_of_ie', 'date_of_re', 'date_of_dc', 'pt_freq', 'pta_visits', 'status',
+                'date_of_ie', 'date_of_re', 'date_of_re_not_applicable', 'date_of_dc', 'pt_freq', 'pta_visits', 'status',
             ])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()

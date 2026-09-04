@@ -42,6 +42,8 @@ new #[Title('Patient')] class extends Component {
 
     public ?string $date_of_re = null;
 
+    public bool $date_of_re_not_applicable = false;
+
     public ?string $date_of_dc = null;
 
     public string $pt_freq = '';
@@ -74,7 +76,19 @@ new #[Title('Patient')] class extends Component {
         $this->date_referred = $patient->date_referred?->toDateString();
         $this->date_of_ie = $patient->date_of_ie?->toDateString();
         $this->date_of_re = $patient->date_of_re?->toDateString();
+        $this->date_of_re_not_applicable = (bool) $patient->date_of_re_not_applicable;
         $this->date_of_dc = $patient->date_of_dc?->toDateString();
+    }
+
+    /**
+     * Marking the re-evaluation as not applicable clears whatever date was
+     * entered, so the two can never disagree.
+     */
+    public function updatedDateOfReNotApplicable(bool $value): void
+    {
+        if ($value) {
+            $this->date_of_re = null;
+        }
     }
 
     public function updatePatient(): void
@@ -94,7 +108,8 @@ new #[Title('Patient')] class extends Component {
             'cert_period' => ['nullable', 'string', 'max:255'],
             'date_referred' => ['nullable', 'date'],
             'date_of_ie' => ['nullable', 'date'],
-            'date_of_re' => ['nullable', 'date'],
+            'date_of_re' => ['nullable', 'date', 'prohibited_if:date_of_re_not_applicable,true'],
+            'date_of_re_not_applicable' => ['boolean'],
             'date_of_dc' => ['nullable', 'date'],
             'pt_freq' => ['nullable', 'string', 'max:255'],
             'pta_visits' => ['nullable', 'integer', 'min:0'],
@@ -448,7 +463,20 @@ new #[Title('Patient')] class extends Component {
             <flux:input wire:model="cert_period" :label="__('Cert period')" />
             <flux:input wire:model="date_referred" type="date" :label="__('Date referred')" />
             <flux:input wire:model="date_of_ie" type="date" :label="__('Date of IE')" />
-            <flux:input wire:model="date_of_re" type="date" :label="__('Date of RE')" />
+            <div class="flex flex-wrap items-end gap-4">
+                <div class="min-w-0 flex-1">
+                    <flux:input
+                        wire:model="date_of_re"
+                        type="date"
+                        :label="__('Date of RE')"
+                        :disabled="$date_of_re_not_applicable"
+                    />
+                </div>
+                <flux:field variant="inline" class="pb-2">
+                    <flux:checkbox wire:model.live="date_of_re_not_applicable" />
+                    <flux:label>{{ __('N/A') }}</flux:label>
+                </flux:field>
+            </div>
             <flux:input wire:model="date_of_dc" type="date" :label="__('Date of DC')" />
             <flux:input wire:model="pt_freq" :label="__('PT frequency')" />
 

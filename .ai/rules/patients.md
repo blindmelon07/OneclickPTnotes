@@ -12,3 +12,8 @@ paths:
 `patients.status` is a plain string column (no enum), so adding a status means adding a `STATUS_*` const plus an entry in `Patient::statusLabels()` (value => display label) and a `statusColor()` arm — nothing else. `statuses()` is derived from `array_keys(statusLabels())`, so validation (`in:`) and every select pick it up automatically.
 
 Labels are multi-word and irregular ("On-Hold", "Px Passed Away", "HHA/MD ordered to stop HHPT"), so never render a status with `ucfirst($patient->status)`. Use `$patient->statusLabel()` for badges and loop `Patient::statusLabels() as $value => $label` for selects.
+
+## date_of_re_not_applicable distinguishes "no RE" from "RE not done yet"
+Not every patient gets a re-evaluation, so a null `date_of_re` is ambiguous. `patients.date_of_re_not_applicable` (boolean, default false) records the "N/A" case explicitly, surfaced as a checkbox beside the Date of RE input in the edit modal on `⚡show.blade.php`.
+
+The two can never both be set: `updatedDateOfReNotApplicable()` clears the date when the box is ticked, and `prohibited_if:date_of_re_not_applicable,true` on `date_of_re` backstops it. Keep the checkbox on `wire:model.live` — the clearing hook and the input's `:disabled` both depend on the live round trip.

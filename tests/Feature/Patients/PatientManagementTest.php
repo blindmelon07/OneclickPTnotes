@@ -304,6 +304,56 @@ test('a patient can be moved to one of the extended roster statuses', function (
     [Patient::STATUS_HAVING_SURGERY, 'Having surgery'],
 ]);
 
+test('a patient with no re-evaluation can be marked not applicable', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['date_of_re' => '2026-01-05']);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('date_of_re_not_applicable', true)
+        ->assertSet('date_of_re', null)
+        ->call('updatePatient')
+        ->assertHasNoErrors();
+
+    $patient->refresh();
+
+    expect($patient->date_of_re_not_applicable)->toBeTrue();
+    expect($patient->date_of_re)->toBeNull();
+});
+
+test('unticking not applicable lets a re-evaluation date be entered again', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['date_of_re' => null, 'date_of_re_not_applicable' => true]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->assertSet('date_of_re_not_applicable', true)
+        ->set('date_of_re_not_applicable', false)
+        ->set('date_of_re', '2026-02-09')
+        ->call('updatePatient')
+        ->assertHasNoErrors();
+
+    $patient->refresh();
+
+    expect($patient->date_of_re_not_applicable)->toBeFalse();
+    expect($patient->date_of_re->toDateString())->toBe('2026-02-09');
+});
+
+test('a re-evaluation date and the not applicable flag cannot both be set', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['date_of_re' => null]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('date_of_re', '2026-02-09')
+        ->set('date_of_re_not_applicable', true)
+        ->set('date_of_re', '2026-02-09')
+        ->call('updatePatient')
+        ->assertHasErrors('date_of_re');
+
+    expect($patient->fresh()->date_of_re)->toBeNull();
+});
+
 test('the roster status filter narrows the list to the chosen status', function () {
     $admin = User::factory()->create()->assignRole('admin');
     $onHold = Patient::factory()->create(['status' => Patient::STATUS_ON_HOLD]);
