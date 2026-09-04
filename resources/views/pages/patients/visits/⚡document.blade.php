@@ -176,18 +176,22 @@ new #[Title('Visit Documentation')] class extends Component {
     }
 
     /**
-     * The MR # is written once on the route sheet and carried onto every other
-     * form, which all print the same number.
+     * The agency name and MR # are written once on the route sheet and carried
+     * onto every other form, which all print the same values.
+     *
+     * @var array<int, string>
      */
+    public const CARRIED_ROUTE_SHEET_FIELDS = ['agency_name', 'mr_number'];
+
     public function updatedRouteSheet(mixed $value, string $key): void
     {
-        if ($key !== 'mr_number') {
+        if (! in_array($key, self::CARRIED_ROUTE_SHEET_FIELDS, true)) {
             return;
         }
 
-        $this->visitNote['mr_number'] = $value;
-        $this->missedVisit['mr_number'] = $value;
-        $this->communication['mr_number'] = $value;
+        $this->visitNote[$key] = $value;
+        $this->missedVisit[$key] = $value;
+        $this->communication[$key] = $value;
     }
 
     /**

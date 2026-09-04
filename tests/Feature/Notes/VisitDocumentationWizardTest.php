@@ -171,6 +171,16 @@ test('the mr number written on the route sheet carries onto the other forms', fu
         ->assertSet('communication.mr_number', 'MR-4821');
 });
 
+test('the agency name written on the route sheet carries onto the other forms', function () {
+    [$user, $patient, $visit] = scheduledVisit();
+
+    wizardFor($user, $patient, $visit)
+        ->set('routeSheet.agency_name', 'Bayside Home Health')
+        ->assertSet('visitNote.agency_name', 'Bayside Home Health')
+        ->assertSet('missedVisit.agency_name', 'Bayside Home Health')
+        ->assertSet('communication.agency_name', 'Bayside Home Health');
+});
+
 test('the assistant signature drawn on the route sheet carries onto the other forms', function () {
     [$user, $patient, $visit] = scheduledVisit();
 

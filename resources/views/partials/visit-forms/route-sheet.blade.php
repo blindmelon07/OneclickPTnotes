@@ -7,7 +7,7 @@
         <flux:input wire:model="routeSheet.week_thru" type="date" :label="__('Thru')" required />
     </div>
 
-    <flux:input wire:model="routeSheet.agency_name" :label="__('Agency name')" required />
+    <flux:input wire:model.blur="routeSheet.agency_name" :label="__('Agency name')" :description="__('Carried onto the other forms.')" required />
 
     <div class="grid gap-4 sm:grid-cols-2">
         <flux:input wire:model="routeSheet.patient_name" :label="__('Patient name')" />
