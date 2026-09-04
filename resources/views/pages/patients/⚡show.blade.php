@@ -443,6 +443,7 @@ new #[Title('Patient')] class extends Component {
                 </flux:select>
             @endunless
 
+            <flux:input wire:model="pta_visits" type="number" :label="__('# PTA visits')" />
             <flux:input wire:model="approved_visits" type="number" :label="__('Approved visits')" />
             <flux:input wire:model="cert_period" :label="__('Cert period')" />
             <flux:input wire:model="date_referred" type="date" :label="__('Date referred')" />
@@ -450,7 +451,6 @@ new #[Title('Patient')] class extends Component {
             <flux:input wire:model="date_of_re" type="date" :label="__('Date of RE')" />
             <flux:input wire:model="date_of_dc" type="date" :label="__('Date of DC')" />
             <flux:input wire:model="pt_freq" :label="__('PT frequency')" />
-            <flux:input wire:model="pta_visits" type="number" :label="__('# PTA visits')" />
 
             <flux:select wire:model.live="status" :label="__('Status')">
                 @foreach (Patient::statuses() as $statusOption)

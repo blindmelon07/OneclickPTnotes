@@ -394,6 +394,20 @@ test('the patient page links each upcoming visit to the wizard', function () {
         ->assertSee(route('patients.visits.document', [$patient, $visit]), escape: false);
 });
 
+test('an already documented visit cannot be opened in the wizard again', function () {
+    [$user, $patient, $visit] = scheduledVisit();
+
+    Note::factory()->create([
+        'patient_id' => $patient->id,
+        'visit_id' => $visit->id,
+        'type' => Note::TYPE_ROUTE_SHEET,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('patients.visits.document', [$patient, $visit]))
+        ->assertForbidden();
+});
+
 test('a documented visit shows notes done instead of the proceed button', function () {
     [$user, $patient, $visit] = scheduledVisit();
 

@@ -74,6 +74,10 @@ new #[Title('Visit Documentation')] class extends Component {
         abort_unless($patient->isVisibleTo(auth()->user()), 403);
         abort_unless($visit->patient_id === $patient->id, 404);
 
+        // The patient page swaps Proceed for a "Notes done" badge once a visit
+        // is documented; close the URL behind it so the forms can't be filed twice.
+        abort_if($visit->notes()->exists(), 403);
+
         $this->patient = $patient;
         $this->visit = $visit;
 
