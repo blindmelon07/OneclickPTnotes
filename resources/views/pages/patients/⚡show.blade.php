@@ -239,12 +239,15 @@ new #[Title('Patient')] class extends Component {
     }
 
     /**
+     * `notes_count` drives the Documentation column: a visit the wizard has
+     * already filed forms for offers no second Proceed.
+     *
      * @return Collection<int, Visit>
      */
     #[Computed]
     public function upcomingVisits(): Collection
     {
-        return $this->patient->visits()->with('therapist')->where('scheduled_at', '>=', now())->orderBy('scheduled_at')->get();
+        return $this->patient->visits()->with('therapist')->withCount('notes')->where('scheduled_at', '>=', now())->orderBy('scheduled_at')->get();
     }
 }; ?>
 
@@ -374,9 +377,13 @@ new #[Title('Patient')] class extends Component {
                                 <flux:table.cell>{{ $visit->scheduled_at->format('M j, Y g:i A') }}</flux:table.cell>
                                 <flux:table.cell>{{ $visit->therapist?->name }}</flux:table.cell>
                                 <flux:table.cell>
-                                    <flux:button size="sm" variant="primary" icon="arrow-right" :href="route('patients.visits.document', [$patient, $visit])" wire:navigate>
-                                        {{ __('Proceed') }}
-                                    </flux:button>
+                                    @if ($visit->notes_count)
+                                        <flux:badge color="green" size="sm" icon="check">{{ __('Notes done') }}</flux:badge>
+                                    @else
+                                        <flux:button size="sm" variant="primary" icon="arrow-right" :href="route('patients.visits.document', [$patient, $visit])" wire:navigate>
+                                            {{ __('Proceed') }}
+                                        </flux:button>
+                                    @endif
                                 </flux:table.cell>
                             </flux:table.row>
                         @empty

@@ -393,3 +393,20 @@ test('the patient page links each upcoming visit to the wizard', function () {
         ->assertSee('Proceed')
         ->assertSee(route('patients.visits.document', [$patient, $visit]), escape: false);
 });
+
+test('a documented visit shows notes done instead of the proceed button', function () {
+    [$user, $patient, $visit] = scheduledVisit();
+
+    Note::factory()->create([
+        'patient_id' => $patient->id,
+        'visit_id' => $visit->id,
+        'type' => Note::TYPE_ROUTE_SHEET,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('patients.show', $patient))
+        ->assertOk()
+        ->assertSee('Notes done')
+        ->assertDontSee('Proceed')
+        ->assertDontSee(route('patients.visits.document', [$patient, $visit]), escape: false);
+});
