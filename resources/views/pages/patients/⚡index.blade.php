@@ -138,8 +138,8 @@ new #[Title('Patients')] class extends Component {
 
         <flux:select wire:model.live="statusFilter" :placeholder="__('All statuses')" class="max-w-48">
             <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-            @foreach (Patient::statuses() as $statusOption)
-                <flux:select.option :value="$statusOption">{{ ucfirst($statusOption) }}</flux:select.option>
+            @foreach (Patient::statusLabels() as $statusOption => $statusLabel)
+                <flux:select.option :value="$statusOption">{{ __($statusLabel) }}</flux:select.option>
             @endforeach
         </flux:select>
 
@@ -171,7 +171,7 @@ new #[Title('Patients')] class extends Component {
                     <flux:table.cell>{{ $patient->homeHealthAgency?->name }}</flux:table.cell>
                     <flux:table.cell>{{ $patient->ptAssistant?->name ?: '—' }}</flux:table.cell>
                     <flux:table.cell>
-                        <flux:badge :color="$patient->statusColor()" size="sm">{{ ucfirst($patient->status) }}</flux:badge>
+                        <flux:badge :color="$patient->statusColor()" size="sm">{{ $patient->statusLabel() }}</flux:badge>
                     </flux:table.cell>
                 </flux:table.row>
             @endforeach
@@ -219,8 +219,8 @@ new #[Title('Patients')] class extends Component {
             />
 
             <flux:select wire:model.live="status" :label="__('Status')">
-                @foreach (Patient::statuses() as $statusOption)
-                    <flux:select.option :value="$statusOption">{{ ucfirst($statusOption) }}</flux:select.option>
+                @foreach (Patient::statusLabels() as $statusOption => $statusLabel)
+                    <flux:select.option :value="$statusOption">{{ __($statusLabel) }}</flux:select.option>
                 @endforeach
             </flux:select>
 

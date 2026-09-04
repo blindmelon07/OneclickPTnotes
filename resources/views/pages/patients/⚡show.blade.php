@@ -255,7 +255,7 @@ new #[Title('Patient')] class extends Component {
     <div class="mb-6 flex items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ $patient->name }}</flux:heading>
-            <flux:badge :color="$patient->statusColor()" size="sm" class="mt-2">{{ ucfirst($patient->status) }}</flux:badge>
+            <flux:badge :color="$patient->statusColor()" size="sm" class="mt-2">{{ $patient->statusLabel() }}</flux:badge>
         </div>
 
         @can('patients.manage')
@@ -453,8 +453,8 @@ new #[Title('Patient')] class extends Component {
             <flux:input wire:model="pt_freq" :label="__('PT frequency')" />
 
             <flux:select wire:model.live="status" :label="__('Status')">
-                @foreach (Patient::statuses() as $statusOption)
-                    <flux:select.option :value="$statusOption">{{ ucfirst($statusOption) }}</flux:select.option>
+                @foreach (Patient::statusLabels() as $statusOption => $statusLabel)
+                    <flux:select.option :value="$statusOption">{{ __($statusLabel) }}</flux:select.option>
                 @endforeach
             </flux:select>
 

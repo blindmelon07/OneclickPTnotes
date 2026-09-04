@@ -279,6 +279,43 @@ test('the roster loads on a database with no roles seeded', function () {
         ->assertSee($patient->name);
 });
 
+test('a patient can be moved to one of the extended roster statuses', function (string $status, string $label) {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['status' => Patient::STATUS_ACTIVE]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('status', $status)
+        ->call('updatePatient')
+        ->assertHasNoErrors();
+
+    expect($patient->fresh()->status)->toBe($status);
+    expect($patient->fresh()->statusLabel())->toBe($label);
+
+    $this->actingAs($admin)
+        ->get(route('patients.show', $patient))
+        ->assertOk()
+        ->assertSee($label);
+})->with([
+    [Patient::STATUS_ON_HOLD, 'On-Hold'],
+    [Patient::STATUS_PATIENT_REFUSED, 'Patient Refused HHPT'],
+    [Patient::STATUS_PASSED_AWAY, 'Px Passed Away'],
+    [Patient::STATUS_STOP_ORDERED, 'HHA/MD ordered to stop HHPT'],
+    [Patient::STATUS_HAVING_SURGERY, 'Having surgery'],
+]);
+
+test('the roster status filter narrows the list to the chosen status', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $onHold = Patient::factory()->create(['status' => Patient::STATUS_ON_HOLD]);
+    $active = Patient::factory()->create(['status' => Patient::STATUS_ACTIVE]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.index')
+        ->set('statusFilter', Patient::STATUS_ON_HOLD)
+        ->assertSee($onHold->name)
+        ->assertDontSee($active->name);
+});
+
 test('the patient page loads on a database with no roles seeded', function () {
     $patient = Patient::factory()->create();
 

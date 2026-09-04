@@ -43,6 +43,16 @@ class Patient extends Model
 
     public const STATUS_HOSPITALIZED = 'hospitalized';
 
+    public const STATUS_ON_HOLD = 'on_hold';
+
+    public const STATUS_PATIENT_REFUSED = 'patient_refused';
+
+    public const STATUS_PASSED_AWAY = 'passed_away';
+
+    public const STATUS_STOP_ORDERED = 'stop_ordered';
+
+    public const STATUS_HAVING_SURGERY = 'having_surgery';
+
     /**
      * Get the attributes that should be cast.
      *
@@ -163,8 +173,40 @@ class Patient extends Model
             self::STATUS_ACTIVE => 'green',
             self::STATUS_DISCHARGED => 'red',
             self::STATUS_HOSPITALIZED => 'yellow',
+            self::STATUS_ON_HOLD => 'amber',
+            self::STATUS_PATIENT_REFUSED => 'orange',
+            self::STATUS_PASSED_AWAY => 'zinc',
+            self::STATUS_STOP_ORDERED => 'rose',
+            self::STATUS_HAVING_SURGERY => 'blue',
             default => 'zinc',
         };
+    }
+
+    /**
+     * The human-readable label for this patient's status.
+     */
+    public function statusLabel(): string
+    {
+        return self::statusLabels()[$this->status] ?? ucfirst($this->status);
+    }
+
+    /**
+     * Every selectable roster status, keyed by stored value.
+     *
+     * @return array<string, string>
+     */
+    public static function statusLabels(): array
+    {
+        return [
+            self::STATUS_ACTIVE => 'Active',
+            self::STATUS_DISCHARGED => 'Discharged',
+            self::STATUS_HOSPITALIZED => 'Hospitalized',
+            self::STATUS_ON_HOLD => 'On-Hold',
+            self::STATUS_PATIENT_REFUSED => 'Patient Refused HHPT',
+            self::STATUS_PASSED_AWAY => 'Px Passed Away',
+            self::STATUS_STOP_ORDERED => 'HHA/MD ordered to stop HHPT',
+            self::STATUS_HAVING_SURGERY => 'Having surgery',
+        ];
     }
 
     /**
@@ -172,7 +214,7 @@ class Patient extends Model
      */
     public static function statuses(): array
     {
-        return [self::STATUS_ACTIVE, self::STATUS_DISCHARGED, self::STATUS_HOSPITALIZED];
+        return array_keys(self::statusLabels());
     }
 
     public function getActivitylogOptions(): LogOptions
