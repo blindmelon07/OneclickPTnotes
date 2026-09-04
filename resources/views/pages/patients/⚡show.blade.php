@@ -458,8 +458,8 @@ new #[Title('Patient')] class extends Component {
                 </flux:select>
             @endunless
 
-            <flux:input wire:model="pta_visits" type="number" :label="__('# PTA visits')" />
-            <flux:input wire:model="approved_visits" type="number" :label="__('Approved visits')" />
+            <flux:input wire:model="approved_visits" type="number" :label="__('Total Approved visits by HHA')" />
+            <flux:input wire:model="pta_visits" type="number" :label="__('Total visits assigned to PTA')" />
             <flux:input wire:model="cert_period" :label="__('Cert period')" />
             <flux:input wire:model="date_referred" type="date" :label="__('Date referred')" />
             <flux:input wire:model="date_of_ie" type="date" :label="__('Date of IE')" />

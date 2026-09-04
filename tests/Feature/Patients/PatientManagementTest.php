@@ -304,6 +304,17 @@ test('a patient can be moved to one of the extended roster statuses', function (
     [Patient::STATUS_HAVING_SURGERY, 'Having surgery'],
 ]);
 
+test('the edit form spells out who approved and who was assigned the visits', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create();
+
+    $this->actingAs($admin)
+        ->get(route('patients.show', $patient))
+        ->assertOk()
+        ->assertSee('Total Approved visits by HHA')
+        ->assertSee('Total visits assigned to PTA');
+});
+
 test('a patient with no re-evaluation can be marked not applicable', function () {
     $admin = User::factory()->create()->assignRole('admin');
     $patient = Patient::factory()->create(['date_of_re' => '2026-01-05']);

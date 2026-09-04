@@ -214,7 +214,7 @@ new #[Title('Patients')] class extends Component {
                 wire:model="approved_visits"
                 type="number"
                 min="1"
-                :label="__('Number of visits')"
+                :label="__('Total Approved visits by HHA')"
                 :description="__('The first and last visit are performed by the admin; the rest by the assigned PT Assistant.')"
             />
 
