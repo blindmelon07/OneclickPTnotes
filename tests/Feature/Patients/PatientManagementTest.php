@@ -304,6 +304,63 @@ test('a patient can be moved to one of the extended roster statuses', function (
     [Patient::STATUS_HAVING_SURGERY, 'Having surgery'],
 ]);
 
+test('the pta share is filled in from the approved total', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['approved_visits' => null, 'pta_visits' => null]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('approved_visits', 7)
+        ->assertSet('pta_visits', 5)
+        ->call('updatePatient')
+        ->assertHasNoErrors();
+
+    expect($patient->fresh()->pta_visits)->toBe(5);
+});
+
+test('a course too short to split leaves the pta with none of it', function (?int $approved, ?int $expected) {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['approved_visits' => 7, 'pta_visits' => 5]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('approved_visits', $approved)
+        ->assertSet('pta_visits', $expected);
+})->with([
+    [1, 0],
+    [2, 0],
+    [3, 1],
+    [null, null],
+]);
+
+test('a patient created with an approved total starts with the pta share set', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.index')
+        ->set('name', 'Jane Doe')
+        ->set('approved_visits', 7)
+        ->set('status', Patient::STATUS_ACTIVE)
+        ->call('createPatient')
+        ->assertHasNoErrors();
+
+    expect(Patient::where('name', 'Jane Doe')->sole()->pta_visits)->toBe(5);
+});
+
+test('the pta share can still be overridden by hand', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $patient = Patient::factory()->create(['approved_visits' => 7]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::patients.show', ['patient' => $patient])
+        ->set('approved_visits', 7)
+        ->set('pta_visits', 3)
+        ->call('updatePatient')
+        ->assertHasNoErrors();
+
+    expect($patient->fresh()->pta_visits)->toBe(3);
+});
+
 test('the edit form spells out who approved and who was assigned the visits', function () {
     $admin = User::factory()->create()->assignRole('admin');
     $patient = Patient::factory()->create();

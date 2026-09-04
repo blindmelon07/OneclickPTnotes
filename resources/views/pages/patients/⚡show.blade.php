@@ -81,6 +81,16 @@ new #[Title('Patient')] class extends Component {
     }
 
     /**
+     * The assistant's share follows the approved count — the admin takes the
+     * evaluation and the discharge, so 7 approved leaves the assistant 5. The
+     * field stays editable for a case that splits differently.
+     */
+    public function updatedApprovedVisits(): void
+    {
+        $this->pta_visits = Patient::ptaVisitsForApprovedVisits($this->approved_visits);
+    }
+
+    /**
      * Marking the re-evaluation as not applicable clears whatever date was
      * entered, so the two can never disagree.
      */
@@ -458,8 +468,13 @@ new #[Title('Patient')] class extends Component {
                 </flux:select>
             @endunless
 
-            <flux:input wire:model="approved_visits" type="number" :label="__('Total Approved visits by HHA')" />
-            <flux:input wire:model="pta_visits" type="number" :label="__('Total visits assigned to PTA')" />
+            <flux:input wire:model.live="approved_visits" type="number" :label="__('Total Approved visits by HHA')" />
+            <flux:input
+                wire:model="pta_visits"
+                type="number"
+                :label="__('Total visits assigned to PTA')"
+                :description="__('Filled in from the approved total — the admin takes the evaluation and the discharge.')"
+            />
             <flux:input wire:model="cert_period" :label="__('Cert period')" />
             <flux:input wire:model="date_referred" type="date" :label="__('Date referred')" />
             <flux:input wire:model="date_of_ie" type="date" :label="__('Date of IE')" />

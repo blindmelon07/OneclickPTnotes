@@ -151,6 +151,24 @@ class Patient extends Model
     }
 
     /**
+     * How many visits of a course the supervising admin performs personally —
+     * the first (evaluation) and the last (discharge). See
+     * `therapistForVisitNumber()`, which is what actually assigns them.
+     */
+    public const ADMIN_VISITS_PER_COURSE = 2;
+
+    /**
+     * The PT Assistant's share of an approved course: everything the admin does
+     * not take off the top. A course of 7 leaves the assistant 5.
+     */
+    public static function ptaVisitsForApprovedVisits(?int $approvedVisits): ?int
+    {
+        return $approvedVisits === null
+            ? null
+            : max(0, $approvedVisits - self::ADMIN_VISITS_PER_COURSE);
+    }
+
+    /**
      * Who performs a given visit: the admin takes the first and the last visit
      * of the course personally, the assigned PT Assistant takes everything in
      * between. `approved_visits` is what makes a visit "the last" one, so with

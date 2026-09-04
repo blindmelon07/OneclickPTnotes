@@ -67,6 +67,10 @@ new #[Title('Patients')] class extends Component {
             $validated['pt_assistant_id'] = auth()->id();
         }
 
+        // The assistant's share follows from the approved total; it can be
+        // adjusted afterwards on the patient's own page.
+        $validated['pta_visits'] = Patient::ptaVisitsForApprovedVisits($validated['approved_visits'] ?? null);
+
         $patient = Patient::create($validated);
 
         $this->reset(['name', 'phone', 'diagnosis', 'doctor_id', 'insurance_company_id', 'home_health_agency_id', 'pt_assistant_id', 'approved_visits']);
