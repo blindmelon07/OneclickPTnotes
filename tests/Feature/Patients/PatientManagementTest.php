@@ -5,6 +5,7 @@ use App\Models\Patient;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -446,4 +447,20 @@ test('the patient page loads on a database with no roles seeded', function () {
         ->assertOk();
 
     expect(User::supervisingAdmin())->toBeNull();
+});
+
+test('viewing a patient chart is recorded in the audit log', function () {
+    $user = User::factory()->create();
+    $patient = Patient::factory()->create();
+
+    $this->actingAs($user)->get(route('patients.show', $patient));
+
+    $activity = Activity::where('log_name', 'patient')
+        ->where('subject_type', Patient::class)
+        ->where('subject_id', $patient->id)
+        ->where('description', 'chart viewed')
+        ->first();
+
+    expect($activity)->not->toBeNull();
+    expect($activity->causer_id)->toBe($user->id);
 });

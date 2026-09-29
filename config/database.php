@@ -62,6 +62,13 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+            /*
+             * spatie/laravel-backup shells out to `mysqldump`. Only needed
+             * when it isn't already on PATH (e.g. local XAMPP installs).
+             */
+            'dump' => array_filter([
+                'dump_binary_path' => env('MYSQLDUMP_PATH'),
+            ]),
         ],
 
         'mariadb' => [

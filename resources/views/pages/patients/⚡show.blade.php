@@ -5,15 +5,20 @@ use App\Models\HomeHealthAgency;
 use App\Models\InsuranceCompany;
 use App\Models\Note;
 use App\Models\Patient;
+use App\Models\PatientAttachment;
 use App\Models\User;
 use App\Models\Visit;
 use Flux\Flux;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Title('Patient')] class extends Component {
+    use WithFileUploads;
+
     public Patient $patient;
 
     public string $name = '';
@@ -60,11 +65,20 @@ new #[Title('Patient')] class extends Component {
 
     public string $visitScheduledAt = '';
 
+    public mixed $newAttachment = null;
+
+    public string $newAttachmentCategory = PatientAttachment::CATEGORY_OTHER;
+
     public function mount(Patient $patient): void
     {
         abort_unless($patient->isVisibleTo(auth()->user()), 403);
 
         $this->patient = $patient;
+
+        activity('patient')
+            ->performedOn($patient)
+            ->causedBy(auth()->user())
+            ->log('chart viewed');
 
         // Columns left empty stay null in the database, but the string-typed
         // properties below cannot take null — drop them and keep the '' default.
@@ -193,6 +207,45 @@ new #[Title('Patient')] class extends Component {
     }
 
     /**
+     * Referrals, prescriptions, imaging/reports, etc. — see PatientAttachment.
+     */
+    public function uploadAttachment(): void
+    {
+        $validated = $this->validate([
+            'newAttachment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'newAttachmentCategory' => ['required', 'in:'.implode(',', PatientAttachment::categories())],
+        ]);
+
+        $path = $validated['newAttachment']->store("attachments/{$this->patient->id}", 'local');
+
+        $this->patient->attachments()->create([
+            'uploaded_by' => auth()->id(),
+            'category' => $validated['newAttachmentCategory'],
+            'original_filename' => $validated['newAttachment']->getClientOriginalName(),
+            'path' => $path,
+        ]);
+
+        $this->reset(['newAttachment', 'newAttachmentCategory']);
+        $this->patient->load('attachments.uploadedBy');
+
+        Flux::toast(variant: 'success', text: __('Attachment uploaded.'));
+    }
+
+    public function deleteAttachment(int $attachmentId): void
+    {
+        abort_unless(auth()->user()->can('patients.manage'), 403);
+
+        $attachment = $this->patient->attachments()->findOrFail($attachmentId);
+
+        Storage::disk('local')->delete($attachment->path);
+        $attachment->delete();
+
+        $this->patient->load('attachments.uploadedBy');
+
+        Flux::toast(variant: 'success', text: __('Attachment deleted.'));
+    }
+
+    /**
      * @return Collection<int, Doctor>
      */
     #[Computed]
@@ -283,11 +336,17 @@ new #[Title('Patient')] class extends Component {
             <flux:badge :color="$patient->statusColor()" size="sm" class="mt-2">{{ $patient->statusLabel() }}</flux:badge>
         </div>
 
-        @can('patients.manage')
-            <flux:modal.trigger name="edit-patient">
-                <flux:button icon="pencil">{{ __('Edit') }}</flux:button>
-            </flux:modal.trigger>
-        @endcan
+        <div class="flex items-center gap-2">
+            <flux:button icon="arrow-down-tray" :href="route('patients.chart.download', $patient)">
+                {{ __('Download full chart') }}
+            </flux:button>
+
+            @can('patients.manage')
+                <flux:modal.trigger name="edit-patient">
+                    <flux:button icon="pencil">{{ __('Edit') }}</flux:button>
+                </flux:modal.trigger>
+            @endcan
+        </div>
     </div>
 
     <div class="grid min-w-0 gap-6 lg:grid-cols-3">
@@ -370,6 +429,50 @@ new #[Title('Patient')] class extends Component {
                 <flux:text class="mt-3 text-xs">
                     {{ __('The first and last visit are performed by the admin; the rest by the assigned PT Assistant.') }}
                 </flux:text>
+            </div>
+
+            <div class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                <flux:heading size="sm" class="mb-3">{{ __('Attachments') }}</flux:heading>
+
+                <div class="space-y-2">
+                    @forelse ($patient->attachments as $attachment)
+                        <div class="flex items-center justify-between gap-2 rounded-md border border-zinc-200 p-2 text-sm dark:border-zinc-700">
+                            <div class="min-w-0">
+                                <div class="truncate font-medium">{{ $attachment->original_filename }}</div>
+                                <div class="text-zinc-500 text-xs">
+                                    {{ $attachment->categoryLabel() }} · {{ $attachment->uploadedBy?->name ?? '—' }} · {{ $attachment->created_at->format('M j, Y') }}
+                                </div>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-1">
+                                <flux:button size="xs" variant="ghost" icon="arrow-down-tray" :href="route('attachments.download', $attachment)" />
+                                @can('patients.manage')
+                                    <flux:button
+                                        size="xs"
+                                        variant="ghost"
+                                        icon="trash"
+                                        wire:click="deleteAttachment({{ $attachment->id }})"
+                                        wire:confirm="{{ __('Delete this attachment? This cannot be undone.') }}"
+                                    />
+                                @endcan
+                            </div>
+                        </div>
+                    @empty
+                        <flux:text variant="subtle" class="text-sm">{{ __('No attachments yet.') }}</flux:text>
+                    @endforelse
+                </div>
+
+                <form wire:submit="uploadAttachment" class="mt-4 space-y-3">
+                    <flux:select wire:model="newAttachmentCategory" :label="__('Category')">
+                        @foreach (\App\Models\PatientAttachment::categoryLabels() as $value => $label)
+                            <flux:select.option :value="$value">{{ __($label) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:input type="file" wire:model="newAttachment" :label="__('File')" accept=".pdf,.jpg,.jpeg,.png" />
+                    <flux:error name="newAttachment" />
+
+                    <flux:button type="submit" size="sm" icon="arrow-up-tray">{{ __('Upload') }}</flux:button>
+                </form>
             </div>
         </div>
 

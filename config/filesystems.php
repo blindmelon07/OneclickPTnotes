@@ -47,6 +47,17 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Kept separate from `local` (storage/app/private) so backup archives
+         * never end up inside the directory they're backing up.
+         */
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

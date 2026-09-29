@@ -1,6 +1,9 @@
 <?php
 
+use App\Actions\Patients\GeneratePatientChartPdf;
 use App\Models\Note;
+use App\Models\Patient;
+use App\Models\PatientAttachment;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +41,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return Storage::disk('local')->response($note->patient_signature_path);
     })->name('notes.patient-signature');
+
+    Route::get('patients/{patient}/chart/download', function (Patient $patient) {
+        abort_unless($patient->isVisibleTo(auth()->user()), 403);
+
+        $path = (new GeneratePatientChartPdf)($patient);
+
+        activity('patient')
+            ->performedOn($patient)
+            ->causedBy(auth()->user())
+            ->log('chart exported');
+
+        return Storage::disk('local')->download($path, sprintf('%s-chart.pdf', $patient->name));
+    })->name('patients.chart.download');
+
+    Route::get('attachments/{attachment}/download', function (PatientAttachment $attachment) {
+        abort_unless($attachment->patient->isVisibleTo(auth()->user()), 403);
+        abort_unless(Storage::disk('local')->exists($attachment->path), 404);
+
+        activity('patient')
+            ->performedOn($attachment)
+            ->causedBy(auth()->user())
+            ->log('attachment downloaded');
+
+        return Storage::disk('local')->download($attachment->path, $attachment->original_filename);
+    })->name('attachments.download');
 
     Route::middleware('unless_hidden:'.User::HIDE_DIRECTORIES)->group(function () {
         Route::livewire('doctors', 'pages::doctors.index')->name('doctors.index');

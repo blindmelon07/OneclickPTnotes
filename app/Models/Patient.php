@@ -143,6 +143,16 @@ class Patient extends Model
     }
 
     /**
+     * Referrals, prescriptions, imaging/reports, etc. uploaded to the chart.
+     *
+     * @return HasMany<PatientAttachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(PatientAttachment::class)->latest();
+    }
+
+    /**
      * Where the next scheduled visit falls in this patient's course of care.
      */
     public function nextVisitNumber(): int

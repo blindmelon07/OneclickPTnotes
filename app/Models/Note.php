@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -70,6 +71,17 @@ class Note extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /**
+     * Timestamped corrections added after signing. See NoteAddendum's
+     * doc-block for why these exist instead of editing the note itself.
+     *
+     * @return HasMany<NoteAddendum, $this>
+     */
+    public function addenda(): HasMany
+    {
+        return $this->hasMany(NoteAddendum::class)->oldest();
     }
 
     public function isSigned(): bool

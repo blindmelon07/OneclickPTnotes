@@ -30,6 +30,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property Carbon|null $disabled_at
  * @property string $calendar_color
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -90,6 +91,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'disabled_at' => 'datetime',
         ];
     }
 
@@ -137,6 +139,16 @@ class User extends Authenticatable implements PasskeyUser
     public function isRestrictedToAssignedPatients(): bool
     {
         return $this->can(self::RESTRICT_OWN_CASELOAD);
+    }
+
+    /**
+     * A disabled account can no longer authenticate — see the `Login` event
+     * listener in AppServiceProvider that enforces this at login time, and
+     * the `sessions` table cleared by the admin panel when disabling.
+     */
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
     }
 
     /**

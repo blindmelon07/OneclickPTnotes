@@ -171,6 +171,16 @@ new #[Title('Security settings')] class extends Component {
 
     <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
 
+    @if (session('status') === 'mfa-required')
+        <flux:callout
+            variant="warning"
+            icon="shield-exclamation"
+            heading="{{ __('Two-factor authentication required') }}"
+            text="{{ __('Administrator accounts must enable two-factor authentication or a passkey before continuing.') }}"
+            class="mb-6"
+        />
+    @endif
+
     <x-pages::settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
             <flux:input

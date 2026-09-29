@@ -43,6 +43,14 @@
                     @endunless
                 </flux:sidebar.group>
 
+                @can('notes.manage')
+                    <flux:sidebar.group :heading="__('Staging')" class="grid">
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('staging-forms.index')" :current="request()->routeIs('staging-forms.*')" wire:navigate>
+                            {{ __('Staging Forms') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endcan
+
                 @can('invoices.manage')
                     <flux:sidebar.group :heading="__('Billing')" class="grid">
                         <flux:sidebar.item icon="document-currency-dollar" :href="route('invoices.index')" :current="request()->routeIs('invoices.*')" wire:navigate>

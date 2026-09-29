@@ -20,7 +20,7 @@ test('non-admins cannot access the audit log', function () {
 });
 
 test('admins can view the audit log', function () {
-    $admin = User::factory()->create()->assignRole('admin');
+    $admin = User::factory()->withTwoFactor()->create()->assignRole('admin');
     $doctor = Doctor::factory()->create();
 
     $this->actingAs($admin)

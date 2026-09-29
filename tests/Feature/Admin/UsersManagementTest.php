@@ -2,7 +2,9 @@
 
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
@@ -21,12 +23,20 @@ test('guests are redirected to login', function () {
 });
 
 test('admins can view the users list', function () {
-    $admin = User::factory()->create()->assignRole('admin');
+    $admin = User::factory()->withTwoFactor()->create()->assignRole('admin');
 
     $this->actingAs($admin)
         ->get(route('admin.users'))
         ->assertOk()
         ->assertSee($admin->name);
+});
+
+test('admins without two-factor authentication are redirected to security settings', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->get(route('admin.users'))
+        ->assertRedirect(route('security.edit'));
 });
 
 test('admins can assign a role to a user', function () {
@@ -96,4 +106,85 @@ test('non-admins cannot create users even if they call the component directly', 
         ->test('pages::admin.users')
         ->call('createUser')
         ->assertForbidden();
+});
+
+test('admins can disable a user, which also kills their active sessions', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $target = User::factory()->create();
+
+    DB::table('sessions')->insert([
+        'id' => 'fake-session-id',
+        'user_id' => $target->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'test',
+        'payload' => base64_encode('fake'),
+        'last_activity' => now()->timestamp,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.users')
+        ->call('toggleDisabled', $target->id);
+
+    expect($target->fresh()->isDisabled())->toBeTrue();
+    expect(DB::table('sessions')->where('user_id', $target->id)->exists())->toBeFalse();
+
+    $activity = Activity::where('log_name', 'user')
+        ->where('subject_id', $target->id)
+        ->where('description', 'user disabled')
+        ->first();
+
+    expect($activity)->not->toBeNull();
+});
+
+test('admins can re-enable a disabled user', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $target = User::factory()->create(['disabled_at' => now()]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.users')
+        ->call('toggleDisabled', $target->id);
+
+    expect($target->fresh()->isDisabled())->toBeFalse();
+});
+
+test('an admin cannot disable their own account', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.users')
+        ->call('toggleDisabled', $admin->id)
+        ->assertForbidden();
+
+    expect($admin->fresh()->isDisabled())->toBeFalse();
+});
+
+test('non-admins cannot disable users even if they call the component directly', function () {
+    $user = User::factory()->create();
+    $target = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::admin.users')
+        ->call('toggleDisabled', $target->id)
+        ->assertForbidden();
+});
+
+test('admins can sign a user out everywhere without disabling them', function () {
+    $admin = User::factory()->create()->assignRole('admin');
+    $target = User::factory()->create();
+
+    DB::table('sessions')->insert([
+        'id' => 'fake-session-id',
+        'user_id' => $target->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'test',
+        'payload' => base64_encode('fake'),
+        'last_activity' => now()->timestamp,
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.users')
+        ->call('signOutEverywhere', $target->id);
+
+    expect($target->fresh()->isDisabled())->toBeFalse();
+    expect(DB::table('sessions')->where('user_id', $target->id)->exists())->toBeFalse();
 });

@@ -5,6 +5,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -109,6 +110,57 @@ new #[Title('Manage Users')] class extends Component {
     }
 
     /**
+     * Disabling blocks future logins (see the Login listener in
+     * AppServiceProvider) and immediately kills any of their active sessions
+     * by deleting the session-driver rows tied to their user_id.
+     */
+    public function toggleDisabled(int $userId): void
+    {
+        abort_unless(auth()->user()->can('users.manage'), 403);
+
+        $user = User::findOrFail($userId);
+
+        abort_if($user->is(auth()->user()), 403, "You can't disable your own account.");
+
+        $user->forceFill([
+            'disabled_at' => $user->isDisabled() ? null : now(),
+        ])->save();
+
+        if ($user->isDisabled()) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
+
+        activity('user')
+            ->causedBy(auth()->user())
+            ->performedOn($user)
+            ->log($user->isDisabled() ? 'user disabled' : 'user enabled');
+
+        Flux::toast(variant: 'success', text: $user->isDisabled()
+            ? __(':name has been disabled.', ['name' => $user->name])
+            : __(':name has been re-enabled.', ['name' => $user->name]));
+    }
+
+    /**
+     * Forces a still-enabled user to re-authenticate everywhere, without
+     * disabling their account — for a suspected-compromised session.
+     */
+    public function signOutEverywhere(int $userId): void
+    {
+        abort_unless(auth()->user()->can('users.manage'), 403);
+
+        $user = User::findOrFail($userId);
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        activity('user')
+            ->causedBy(auth()->user())
+            ->performedOn($user)
+            ->log('sessions revoked');
+
+        Flux::toast(variant: 'success', text: __(':name has been signed out everywhere.', ['name' => $user->name]));
+    }
+
+    /**
      * @return Collection<int, Role>
      */
     #[Computed]
@@ -156,7 +208,12 @@ new #[Title('Manage Users')] class extends Component {
             <flux:table.rows>
                 @foreach ($this->users as $user)
                     <flux:table.row :key="$user->id">
-                        <flux:table.cell variant="strong">{{ $user->name }}</flux:table.cell>
+                        <flux:table.cell variant="strong">
+                            {{ $user->name }}
+                            @if ($user->isDisabled())
+                                <flux:badge size="sm" color="red" class="ms-1">{{ __('Disabled') }}</flux:badge>
+                            @endif
+                        </flux:table.cell>
                         <flux:table.cell>{{ $user->email }}</flux:table.cell>
                         <flux:table.cell>
                             <div class="flex flex-wrap gap-1">
@@ -169,9 +226,31 @@ new #[Title('Manage Users')] class extends Component {
                         </flux:table.cell>
                         <flux:table.cell>
                             @can('users.manage')
-                                <flux:button size="sm" variant="ghost" wire:click="editRoles({{ $user->id }})">
-                                    {{ __('Edit roles') }}
-                                </flux:button>
+                                <div class="flex flex-wrap gap-1">
+                                    <flux:button size="sm" variant="ghost" wire:click="editRoles({{ $user->id }})">
+                                        {{ __('Edit roles') }}
+                                    </flux:button>
+
+                                    @unless ($user->is(auth()->user()))
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="toggleDisabled({{ $user->id }})"
+                                            wire:confirm="{{ $user->isDisabled() ? __('Re-enable this user?') : __('Disable this user? They will be signed out immediately and unable to log in.') }}"
+                                        >
+                                            {{ $user->isDisabled() ? __('Enable') : __('Disable') }}
+                                        </flux:button>
+                                    @endunless
+
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="signOutEverywhere({{ $user->id }})"
+                                        wire:confirm="{{ __('Sign this user out of all their active sessions?') }}"
+                                    >
+                                        {{ __('Sign out everywhere') }}
+                                    </flux:button>
+                                </div>
                             @endcan
                         </flux:table.cell>
                     </flux:table.row>
