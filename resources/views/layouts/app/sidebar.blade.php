@@ -48,6 +48,9 @@
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('staging-forms.index')" :current="request()->routeIs('staging-forms.*')" wire:navigate>
                             {{ __('Staging Forms') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-text" :href="route('outpatient-forms.index')" :current="request()->routeIs('outpatient-forms.*')" wire:navigate>
+                            {{ __('Outpatient Forms') }}
+                        </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endcan
 

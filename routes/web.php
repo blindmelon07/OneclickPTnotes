@@ -18,3 +18,4 @@ require __DIR__.'/admin.php';
 require __DIR__.'/patients.php';
 require __DIR__.'/invoices.php';
 require __DIR__.'/staging-forms.php';
+require __DIR__.'/outpatient-forms.php';

@@ -33,6 +33,7 @@ return [
         'phone' => env('NOTES_PHONE', '213.250.0078, 213.250.9978'),
         'fax' => env('NOTES_FAX', '213.250.5578'),
         'website' => env('NOTES_WEBSITE', 'www.ptrncareinc.com'),
+        'locations' => env('NOTES_LOCATIONS', 'DOWNTOWN LA & CITY OF LYNWOOD'),
         'supervising_therapist' => env('NOTES_SUPERVISING_THERAPIST', 'HIRAM OWEN BRIAN MASAYON, PT, CCI'),
         'supervising_therapist_title' => env('NOTES_SUPERVISING_TITLE', 'Registered Physical Therapist'),
         'assistant_title' => env('NOTES_ASSISTANT_TITLE', 'Physical Therapist Assistant'),
