@@ -107,7 +107,8 @@ class StagingForm extends Model
                 'standing_dynamic' => '',
             ],
             'living_situation' => '',
-            'precautions' => '',
+            'precautions' => [],
+            'precautions_other' => '',
             'rehab_potential' => '',
             'rom_exceptions' => '',
             'mmt_exceptions' => '',
@@ -132,12 +133,20 @@ class StagingForm extends Model
 
     /**
      * The stored data merged over the blank form, so every key is present.
+     * Precautions were once free text; that text now carries over as "Others".
      *
      * @return array<string, mixed>
      */
     public function formData(): array
     {
-        return array_replace_recursive(self::blankData(), $this->data ?? []);
+        $data = array_replace_recursive(self::blankData(), $this->data ?? []);
+
+        if (is_string($data['precautions'])) {
+            $data['precautions_other'] = $data['precautions_other'] ?: $data['precautions'];
+            $data['precautions'] = [];
+        }
+
+        return $data;
     }
 
     /**
@@ -252,6 +261,14 @@ class StagingForm extends Model
     public static function cognitionOptions(): array
     {
         return ['Alert', 'Oriented', 'Lethargic', 'ST memory', 'Confused', 'Comatose', 'Agitated', 'LT memory'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function precautionOptions(): array
+    {
+        return ['Cancer', 'Pacemaker', 'Seizures', 'DM1', 'DM2', 'Dialysis', 'Asthma', 'DVT', 'Blood clot'];
     }
 
     /**
@@ -489,6 +506,19 @@ class StagingForm extends Model
     public function cannotAmbulateDistance(): string
     {
         return $this->formData()['cannot_ambulate_distance'] ?: $this->formData()['gait']['level_surfaces'];
+    }
+
+    /**
+     * The checked precautions and any others, as one line.
+     */
+    public function precautionSummary(): string
+    {
+        $data = $this->formData();
+
+        return implode(', ', array_filter([
+            ...array_intersect(self::precautionOptions(), $data['precautions']),
+            $data['precautions_other'],
+        ]));
     }
 
     /**

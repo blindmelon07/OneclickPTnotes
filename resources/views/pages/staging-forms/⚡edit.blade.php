@@ -56,7 +56,9 @@ new #[Title('Staging Form')] class extends Component {
             'data.cognition_other' => $text,
             'data.balance.*' => ['nullable', Rule::in(StagingForm::balanceGrades())],
             'data.living_situation' => $text,
-            'data.precautions' => $text,
+            'data.precautions' => ['array'],
+            'data.precautions.*' => [Rule::in(StagingForm::precautionOptions())],
+            'data.precautions_other' => $text,
             'data.rehab_potential' => ['nullable', Rule::in(StagingForm::rehabPotentials())],
             'data.rom_exceptions' => $longText,
             'data.mmt_exceptions' => $longText,
@@ -250,10 +252,19 @@ new #[Title('Staging Form')] class extends Component {
                     </flux:select>
                 @endforeach
             </div>
-            <div class="grid gap-4 sm:grid-cols-2">
-                <flux:input wire:model="data.living_situation" :label="__('Living situation')" />
-                <flux:input wire:model="data.precautions" :label="__('Precautions')" />
+            <flux:input wire:model="data.living_situation" :label="__('Living situation')" />
+            <div>
+                <flux:label>{{ __('Precautions') }}</flux:label>
+                <div class="mt-2 grid gap-1 sm:grid-cols-5">
+                    @foreach (StagingForm::precautionOptions() as $option)
+                        <flux:field variant="inline">
+                            <flux:checkbox wire:model="data.precautions" value="{{ $option }}" />
+                            <flux:label>{{ $option }}</flux:label>
+                        </flux:field>
+                    @endforeach
+                </div>
             </div>
+            <flux:input wire:model="data.precautions_other" :label="__('Other precautions')" />
             <flux:radio.group wire:model="data.rehab_potential" :label="__('Rehab potential')" variant="segmented" class="max-w-md">
                 @foreach (StagingForm::rehabPotentials() as $potential)
                     <flux:radio :value="$potential" :label="$potential" />

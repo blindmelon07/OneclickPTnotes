@@ -98,7 +98,7 @@
 
             <table class="meta">
                 <tr><td class="label">Living situation:</td><td>{{ $data['living_situation'] }}</td></tr>
-                <tr><td class="label">Precautions:</td><td>{{ $data['precautions'] }}</td></tr>
+                <tr><td class="label">Precautions:</td><td>{{ $form->precautionSummary() }}</td></tr>
                 <tr>
                     <td class="label">Rehab potential:</td>
                     <td>

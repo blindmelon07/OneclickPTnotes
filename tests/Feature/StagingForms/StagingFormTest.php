@@ -40,6 +40,8 @@ test('the va fills in the evaluation and a staging form is created', function ()
         ->set('data.functional_level', 'MIN assist')
         ->set('data.functional_overrides.feeding', 'Indep')
         ->set('data.homebound_reasons', ['Cannot ambulate >', 'Pain limits mobility'])
+        ->set('data.precautions', ['Pacemaker', 'Cancer'])
+        ->set('data.precautions_other', 'Fall risk')
         ->set('data.pta_schedule.0.visits', '2')
         ->set('data.pta_schedule.1.visits', '3')
         ->call('save')
@@ -53,7 +55,18 @@ test('the va fills in the evaluation and a staging form is created', function ()
         ->and($stagingForm->created_by)->toBe($ptAssistant->id)
         ->and($stagingForm->functionalLevelFor('dressing'))->toBe('MIN assist')
         ->and($stagingForm->functionalLevelFor('feeding'))->toBe('Indep')
+        ->and($stagingForm->precautionSummary())->toBe('Cancer, Pacemaker, Fall risk')
         ->and($stagingForm->totalPtaVisits())->toBe(5);
+});
+
+test('free text precautions from older forms carry over as others', function () {
+    $stagingForm = StagingForm::factory()->create([
+        'data' => [...StagingForm::blankData(), 'precautions' => 'Fall risk'],
+    ]);
+
+    expect($stagingForm->formData()['precautions'])->toBe([])
+        ->and($stagingForm->formData()['precautions_other'])->toBe('Fall risk')
+        ->and($stagingForm->precautionSummary())->toBe('Fall risk');
 });
 
 test('patient and agency names are required and choices must come from the form', function () {
@@ -63,6 +76,7 @@ test('patient and agency names are required and choices must come from the form'
         ->test('pages::staging-forms.edit')
         ->set('data.functional_level', 'Somewhat okay')
         ->set('data.homebound_reasons', ['Made up reason'])
+        ->set('data.precautions', ['Made up'])
         ->set('data.pta_schedule.0.visits', 'two')
         ->call('save')
         ->assertHasErrors([
@@ -70,6 +84,7 @@ test('patient and agency names are required and choices must come from the form'
             'data.patient_name' => 'required',
             'data.functional_level',
             'data.homebound_reasons.0',
+            'data.precautions.0',
             'data.pta_schedule.0.visits',
         ]);
 

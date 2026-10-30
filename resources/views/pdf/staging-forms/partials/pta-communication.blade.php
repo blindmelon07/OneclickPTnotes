@@ -56,7 +56,7 @@
 </ol>
 
 <table class="meta">
-    <tr><td class="label">Precaution:</td><td>{{ $data['precautions'] }}</td></tr>
+    <tr><td class="label">Precaution:</td><td>{{ $form->precautionSummary() }}</td></tr>
 </table>
 
 <h2>Goals of PX</h2>
