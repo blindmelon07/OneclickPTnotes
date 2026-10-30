@@ -96,8 +96,8 @@ new #[Title('Outpatient Form')] class extends Component {
             'data.ie.goals.*' => [Rule::in(array_keys(OutpatientForm::goals()))],
             'data.ie.goal_details.*' => $text,
             'data.ie.rehab_potential' => ['nullable', Rule::in(OutpatientForm::rehabPotentials())],
-            'data.ie.date_of_rx' => $date,
-            'data.ie.reeval_date' => $date,
+            'data.ie.rx_expiration_date' => $date,
+            'data.ie.total_authorized_visits' => $count,
             'data.ie.frequency' => $count,
             'data.ie.duration' => $count,
 
@@ -402,8 +402,8 @@ new #[Title('Outpatient Form')] class extends Component {
                     @endforeach
                 </flux:radio.group>
                 <div class="grid gap-4 sm:grid-cols-4">
-                    <flux:input wire:model="data.ie.date_of_rx" type="date" :label="__('Date of Rx')" />
-                    <flux:input wire:model="data.ie.reeval_date" type="date" :label="__('Re-eval date')" />
+                    <flux:input wire:model="data.ie.rx_expiration_date" type="date" :label="__('Rx expiration date')" />
+                    <flux:input wire:model="data.ie.total_authorized_visits" type="number" min="0" :label="__('Total authorized visits')" />
                     <flux:input wire:model="data.ie.frequency" type="number" min="0" :label="__('Authorized x / wk')" />
                     <flux:input wire:model="data.ie.duration" type="number" min="0" :label="__('For wks')" />
                 </div>

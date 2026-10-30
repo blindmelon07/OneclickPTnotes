@@ -125,6 +125,6 @@
     </tr>
     <tr>
         <td><strong>Authorized Frequency &amp; Duration:</strong> <span class="fill">{{ $ie['frequency'] }}</span> x/wk / <span class="fill">{{ $ie['duration'] }}</span> wk</td>
-        <td>Date of Rx: <span class="fill">{{ $date($ie['date_of_rx']) }}</span> &nbsp; Re-eval date: <span class="fill">{{ $date($ie['reeval_date']) }}</span></td>
+        <td>Rx expiration date: <span class="fill">{{ $date($ie['rx_expiration_date']) }}</span> &nbsp; Total authorized visits: <span class="fill">{{ $ie['total_authorized_visits'] }}</span></td>
     </tr>
 </table>
