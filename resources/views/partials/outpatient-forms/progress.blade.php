@@ -13,15 +13,28 @@
                 <flux:label class="sm:pb-2">{{ __($label) }}</flux:label>
             @endif
 
-            <flux:input
-                wire:model="data.{{ $form }}.progress.{{ $row }}.baseline"
-                :label="__('Baseline (IE)')"
-                :placeholder="$preview->initialValue($row)"
-                size="sm"
-            />
+            @if ($row === 'rom')
+                <flux:textarea
+                    wire:model="data.{{ $form }}.progress.{{ $row }}.baseline"
+                    :label="__('Baseline (IE)')"
+                    :placeholder="$preview->initialValue($row)"
+                    rows="3"
+                />
+            @else
+                <flux:input
+                    wire:model="data.{{ $form }}.progress.{{ $row }}.baseline"
+                    :label="__('Baseline (IE)')"
+                    :placeholder="$preview->initialValue($row)"
+                    size="sm"
+                />
+            @endif
 
             <div class="space-y-2">
-                <flux:input wire:model="data.{{ $form }}.progress.{{ $row }}.value" :label="__($currentLabel)" size="sm" />
+                @if ($row === 'rom')
+                    <flux:textarea wire:model="data.{{ $form }}.progress.{{ $row }}.value" :label="__($currentLabel)" rows="3" />
+                @else
+                    <flux:input wire:model="data.{{ $form }}.progress.{{ $row }}.value" :label="__($currentLabel)" size="sm" />
+                @endif
                 @if ($row === 'mmt')
                     <div class="grid grid-cols-2 gap-2">
                         <flux:input wire:model="data.{{ $form }}.grip.right" :label="__('Grip R (lbs)')" size="sm" />

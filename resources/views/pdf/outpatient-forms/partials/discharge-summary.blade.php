@@ -19,7 +19,7 @@
                 @if ($row === 'mmt')
                     Grip: R: <span class="fill">{{ $ie['grip']['right'] }}</span>lbs L: <span class="fill">{{ $ie['grip']['left'] }}</span>lbs<br>
                 @endif
-                {{ $form->baselineFor('dc', $row) }}
+                {!! nl2br(e($form->baselineFor('dc', $row))) !!}
                 @if ($row === 'pain')
                     &nbsp; {!! $meds($dc['pain_meds_initial']) !!}
                 @endif
@@ -33,7 +33,7 @@
                 @if ($row === 'mmt' && (filled($dc['grip']['right']) || filled($dc['grip']['left'])))
                     Grip: R: {{ $dc['grip']['right'] }}lbs L: {{ $dc['grip']['left'] }}lbs<br>
                 @endif
-                {{ $dc['progress'][$row]['value'] }}
+                {!! nl2br(e($dc['progress'][$row]['value'])) !!}
                 @if ($row === 'pain')
                     &nbsp; {!! $meds($dc['pain_meds_end']) !!}
                 @endif

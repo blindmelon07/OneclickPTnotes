@@ -150,6 +150,28 @@ test('the treatment plan carries from the ie to the re to the dc line by line', 
         ->and($outpatientForm->planFor('dc', 'manual_therapy'))->toBe('Joint mobs');
 });
 
+test('precautions no longer on the form do not block saving an older form', function () {
+    $ptAssistant = User::factory()->create()->assignRole(User::ROLE_PT_ASSISTANT);
+    $outpatientForm = OutpatientForm::factory()->create([
+        'data' => array_replace_recursive(OutpatientForm::blankData(), [
+            'patient_name' => 'Jane Doe',
+            'ie' => [
+                'precautions' => ['Pregnant', 'CA', 'Pacemaker'],
+                'precaution_details' => ['CA' => 'lung', 'HEP' => 'B'],
+            ],
+        ]),
+    ]);
+
+    expect($outpatientForm->precautionSummary())->toBe('Cancer lung, Pacemaker');
+
+    Livewire::actingAs($ptAssistant)
+        ->test('pages::outpatient-forms.edit', ['outpatientForm' => $outpatientForm])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($outpatientForm->fresh()->data['ie']['precautions'])->toBe(['Cancer', 'Pacemaker']);
+});
+
 test('fixed treatment plan lines print the same on every form', function () {
     $outpatientForm = OutpatientForm::factory()->create([
         'data' => array_replace_recursive(OutpatientForm::blankData(), [
@@ -179,7 +201,7 @@ test('the re-evaluation prints the ie baseline beside the current value', functi
         'data' => array_replace_recursive(OutpatientForm::blankData(), [
             'patient_name' => 'Jane Doe',
             'ie' => ['rom' => 'Wrist ext 30'],
-            're' => ['progress' => ['rom' => ['value' => 'Wrist ext 55', 'status' => 'Improving']]],
+            're' => ['progress' => ['rom' => ['value' => "Shoulder 90\nWrist ext 55", 'status' => 'Improving']]],
         ]),
     ]);
 
@@ -190,7 +212,7 @@ test('the re-evaluation prints the ie baseline beside the current value', functi
     ])->render();
 
     expect($html)->toContain('Wrist ext 30')
-        ->toContain('Wrist ext 55')
+        ->toContain("Shoulder 90<br />\nWrist ext 55")
         ->toMatch('/class="box on"><\/span>Improving/');
 });
 

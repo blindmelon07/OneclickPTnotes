@@ -187,12 +187,24 @@ class OutpatientForm extends Model
 
     /**
      * The stored data merged over the blank case, so every key is present.
+     * Precautions no longer on the form are dropped, and the old "CA" becomes "Cancer".
      *
      * @return array<string, mixed>
      */
     public function formData(): array
     {
-        return array_replace_recursive(self::blankData(), $this->data ?? []);
+        $data = array_replace_recursive(self::blankData(), $this->data ?? []);
+        $ie = &$data['ie'];
+
+        if (in_array('CA', $ie['precautions'], true)) {
+            $ie['precautions'][] = 'Cancer';
+            $ie['precaution_details']['Cancer'] = $ie['precaution_details']['Cancer'] ?: ($ie['precaution_details']['CA'] ?? '');
+        }
+
+        $ie['precautions'] = array_values(array_intersect(self::precautions(), $ie['precautions']));
+        $ie['precaution_details'] = array_intersect_key($ie['precaution_details'], array_flip(self::detailedPrecautions()));
+
+        return $data;
     }
 
     /**

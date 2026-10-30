@@ -204,7 +204,15 @@ new #[Title('Outpatient Form')] class extends Component {
 
     <form wire:submit="save" class="max-w-5xl space-y-8">
         @if ($errors->any())
-            <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('Some fields need fixing — check each tab.')" />
+            <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('Some fields need fixing — check each tab.')">
+                <flux:callout.text>
+                    <ul class="list-disc ps-5">
+                        @foreach ($errors->all() as $message)
+                            <li>{{ $message }}</li>
+                        @endforeach
+                    </ul>
+                </flux:callout.text>
+            </flux:callout>
         @endif
 
         <div class="{{ $section }}">

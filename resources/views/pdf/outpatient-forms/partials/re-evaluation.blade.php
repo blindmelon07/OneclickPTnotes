@@ -17,13 +17,13 @@
                 @if ($row === 'mmt')
                     Grip: R: <span class="fill">{{ $re['grip']['right'] }}</span>lbs L: <span class="fill">{{ $re['grip']['left'] }}</span>lbs<br>
                 @endif
-                {{ $re['progress'][$row]['value'] }}
+                {!! nl2br(e($re['progress'][$row]['value'])) !!}
                 @if ($row === 'pain')
                     &nbsp; {!! $box($re['pain_meds'] === '+') !!}+ / {!! $box($re['pain_meds'] === '-') !!}- MEDS
                 @endif
             </td>
             <td>
-                {{ $form->baselineFor('re', $row) }}
+                {!! nl2br(e($form->baselineFor('re', $row))) !!}
                 @if ($row === 'mmt' && (filled($ie['grip']['right']) || filled($ie['grip']['left'])))
                     <br>Grip: R: {{ $ie['grip']['right'] }}lbs L: {{ $ie['grip']['left'] }}lbs
                 @endif
