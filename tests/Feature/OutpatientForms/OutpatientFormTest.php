@@ -146,6 +146,20 @@ test('the treatment plan carries from the ie to the re to the dc line by line', 
         ->and($outpatientForm->planFor('dc', 'manual_therapy'))->toBe('Joint mobs');
 });
 
+test('fixed treatment plan lines print the same on every form', function () {
+    $outpatientForm = OutpatientForm::factory()->create([
+        'data' => array_replace_recursive(OutpatientForm::blankData(), [
+            'ie' => ['plan' => ['postural_training' => 'Something else']],
+        ]),
+    ]);
+
+    foreach (['ie', 're', 'dc'] as $form) {
+        foreach (OutpatientForm::fixedTreatmentPlan() as $item => $text) {
+            expect($outpatientForm->planFor($form, $item))->toBe($text);
+        }
+    }
+});
+
 test('each document and the full set render as pdfs', function (string $document) {
     $ptAssistant = User::factory()->create()->assignRole(User::ROLE_PT_ASSISTANT);
     $outpatientForm = OutpatientForm::factory()->create();

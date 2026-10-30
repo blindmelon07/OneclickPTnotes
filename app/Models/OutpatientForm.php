@@ -271,6 +271,20 @@ class OutpatientForm extends Model
     }
 
     /**
+     * Fixed — treatment plan lines printed the same on every form, never editable.
+     *
+     * @return array<string, string>
+     */
+    public static function fixedTreatmentPlan(): array
+    {
+        return [
+            'adl_training' => 'Px education on self care and energy conservation technique',
+            'postural_training' => 'Teach proper posture',
+            'home_program' => 'Perform HEP as shown and instructed by PT.',
+        ];
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function rehabPotentials(): array
@@ -397,12 +411,17 @@ class OutpatientForm extends Model
 
     /**
      * The treatment plan for a form. The RE copies the IE's and the DC copies
-     * the RE's, line by line, unless the line is set separately.
+     * the RE's, line by line, unless the line is set separately. Fixed lines
+     * always print their fixed text.
      *
      * @param  'ie'|'re'|'dc'  $form
      */
     public function planFor(string $form, string $item): string
     {
+        if (isset(self::fixedTreatmentPlan()[$item])) {
+            return self::fixedTreatmentPlan()[$item];
+        }
+
         $data = $this->formData();
         $own = $data[$form]['plan'][$item] ?? '';
 
