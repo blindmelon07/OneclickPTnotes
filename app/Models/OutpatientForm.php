@@ -224,7 +224,7 @@ class OutpatientForm extends Model
      */
     public static function precautions(): array
     {
-        return ['Pregnant', 'Pacemaker', 'Seizures', 'HEP', 'CA', 'Dialysis', 'DM1', 'DM2', 'Allergy'];
+        return ['Cancer', 'Pacemaker', 'Seizures', 'DM1', 'DM2', 'Dialysis', 'Asthma', 'DVT', 'Blood clot'];
     }
 
     /**
@@ -234,7 +234,7 @@ class OutpatientForm extends Model
      */
     public static function detailedPrecautions(): array
     {
-        return ['HEP', 'CA', 'Dialysis', 'Allergy'];
+        return ['Cancer', 'Dialysis'];
     }
 
     /**
